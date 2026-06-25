@@ -12,7 +12,7 @@
     "short": 3.0
   },
   "GAP-CONT": {
-    "long": 1.125,
+    "long": 0.5,
     "short": 1.0
   },
   "VOL-SPIKE": {
@@ -20,7 +20,7 @@
     "short": 1.0
   },
   "VWAP-REV": {
-    "long": 0.5,
+    "long": 0.125,
     "short": 0.1
   },
   "RSI-EXT": {
@@ -29,7 +29,7 @@
   },
   "BOLLINGER": {
     "long": 3.0,
-    "short": 2.25
+    "short": 1.5
   },
   "GAP-FADE": {
     "long": 3.0,
@@ -45,7 +45,7 @@
   },
   "MACD": {
     "long": 3.0,
-    "short": 3.0
+    "short": 2.25
   },
   "SR-BREAK": {
     "long": 3.0,
@@ -65,14 +65,14 @@
   },
   "CAMARILLA": {
     "long": 3.0,
-    "short": 3.0
+    "short": 1.5
   },
   "ADX-FILTER": {
     "long": 3.0,
-    "short": 3.0
+    "short": 2.25
   },
   "VWAP-STDDEV": {
-    "long": 0.5,
+    "long": 0.1,
     "short": 0.5
   },
   "STOCHASTIC": {
@@ -88,7 +88,7 @@
     "short": 3.0
   },
   "ASC-TRI": {
-    "long": 3.0,
+    "long": 1.6875,
     "short": 1.0
   },
   "DBL-BTM": {
@@ -96,7 +96,7 @@
     "short": 1.0
   },
   "BULL-FLAG": {
-    "long": 1.125,
+    "long": 0.75,
     "short": 1.0
   },
   "FALL-WEDGE": {
@@ -141,7 +141,7 @@
   },
   "PIN-BAR": {
     "long": 3.0,
-    "short": 3.0
+    "short": 2.25
   },
   "INTRADAY-STRUCT": {
     "long": 3.0,

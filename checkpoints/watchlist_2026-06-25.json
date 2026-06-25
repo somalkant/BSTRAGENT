@@ -1,0 +1,2327 @@
+{
+  "trade_date": "2026-06-25",
+  "watchlist": [
+    {
+      "symbol": "GRASIM",
+      "pre_score": 5.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=3122 RSI=54"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=3200.00"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=3164.20"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 3142.50"
+        ]
+      ],
+      "turnover_cr": 202.0
+    },
+    {
+      "symbol": "PNB",
+      "pre_score": 5.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=107 RSI=56"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=110.50"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=110.03"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 108.23"
+        ]
+      ],
+      "turnover_cr": 180.0
+    },
+    {
+      "symbol": "NAUKRI",
+      "pre_score": 5.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=996 RSI=51"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1029.00"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=1022.00"
+        ]
+      ],
+      "turnover_cr": 137.8
+    },
+    {
+      "symbol": "ZYDUSLIFE",
+      "pre_score": 5.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1088 RSI=54"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1119.80"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=1112.83"
+        ]
+      ],
+      "turnover_cr": 132.4
+    },
+    {
+      "symbol": "ADANIENT",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=2973 RSI=58"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=3059.80"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 3077.00"
+        ]
+      ],
+      "turnover_cr": 525.0
+    },
+    {
+      "symbol": "APOLLOHOSP",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=8385 RSI=71"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=8624.00"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 8585.00"
+        ]
+      ],
+      "turnover_cr": 274.4
+    },
+    {
+      "symbol": "EMMVEE",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=329 RSI=54"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=352.00"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 339.85"
+        ]
+      ],
+      "turnover_cr": 117.4
+    },
+    {
+      "symbol": "FORTIS",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=964 RSI=63"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=1000.39"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 978.05"
+        ]
+      ],
+      "turnover_cr": 114.8
+    },
+    {
+      "symbol": "INDUSINDBK",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=916 RSI=56"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=939.46"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 933.80"
+        ]
+      ],
+      "turnover_cr": 160.2
+    },
+    {
+      "symbol": "LICHSGFIN",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=546 RSI=52"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=554.00"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 552.60"
+        ]
+      ],
+      "turnover_cr": 66.9
+    },
+    {
+      "symbol": "MOTHERSON",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=144 RSI=51"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=149.90"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 145.16"
+        ]
+      ],
+      "turnover_cr": 261.7
+    },
+    {
+      "symbol": "PFC",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=428 RSI=56"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=436.65"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 439.00"
+        ]
+      ],
+      "turnover_cr": 249.3
+    },
+    {
+      "symbol": "SRF",
+      "pre_score": 4.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=2716 RSI=55"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=2765.20"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 2774.00"
+        ]
+      ],
+      "turnover_cr": 130.2
+    },
+    {
+      "symbol": "ACMESOLAR",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=338 RSI=59"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=352.00"
+        ]
+      ],
+      "turnover_cr": 76.1
+    },
+    {
+      "symbol": "BIOCON",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=418 RSI=59"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=423.55"
+        ]
+      ],
+      "turnover_cr": 116.1
+    },
+    {
+      "symbol": "CARTRADE",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=2228 RSI=82"
+        ],
+        [
+          "BULL-FLAG",
+          "flag_top=2742.00"
+        ]
+      ],
+      "turnover_cr": 187.6
+    },
+    {
+      "symbol": "CIPLA",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1389 RSI=60"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1397.90"
+        ]
+      ],
+      "turnover_cr": 196.0
+    },
+    {
+      "symbol": "CRAFTSMAN",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=9152 RSI=55"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=9300.00"
+        ]
+      ],
+      "turnover_cr": 77.2
+    },
+    {
+      "symbol": "DIVISLAB",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=6668 RSI=59"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=6815.00"
+        ]
+      ],
+      "turnover_cr": 210.3
+    },
+    {
+      "symbol": "DIXON",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=11822 RSI=59"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=11944.00"
+        ]
+      ],
+      "turnover_cr": 590.0
+    },
+    {
+      "symbol": "DMART",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=4159 RSI=64"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=4235.20"
+        ]
+      ],
+      "turnover_cr": 184.9
+    },
+    {
+      "symbol": "GROWW",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=194 RSI=57"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=198.04"
+        ]
+      ],
+      "turnover_cr": 518.7
+    },
+    {
+      "symbol": "HYUNDAI",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1941 RSI=52"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1951.00"
+        ]
+      ],
+      "turnover_cr": 128.8
+    },
+    {
+      "symbol": "ICICIAMC",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=3328 RSI=54"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=3338.40"
+        ]
+      ],
+      "turnover_cr": 122.3
+    },
+    {
+      "symbol": "ICICIGI",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=1779 RSI=60"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1802.40"
+        ]
+      ],
+      "turnover_cr": 115.8
+    },
+    {
+      "symbol": "J&KBANK",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=154 RSI=70"
+        ],
+        [
+          "BULL-FLAG",
+          "flag_top=167.15"
+        ]
+      ],
+      "turnover_cr": 55.0
+    },
+    {
+      "symbol": "LAURUSLABS",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1404 RSI=55"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1457.00"
+        ]
+      ],
+      "turnover_cr": 243.9
+    },
+    {
+      "symbol": "LUPIN",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=2287 RSI=74"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=2304.00"
+        ]
+      ],
+      "turnover_cr": 167.3
+    },
+    {
+      "symbol": "MAHABANK",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=84 RSI=71"
+        ],
+        [
+          "BULL-FLAG",
+          "flag_top=91.20"
+        ]
+      ],
+      "turnover_cr": 108.8
+    },
+    {
+      "symbol": "MFSL",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=1625 RSI=65"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1627.00"
+        ]
+      ],
+      "turnover_cr": 100.1
+    },
+    {
+      "symbol": "MRF",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=126412 RSI=69"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=127590.00"
+        ]
+      ],
+      "turnover_cr": 64.7
+    },
+    {
+      "symbol": "NHPC",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=76 RSI=61"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=76.69"
+        ]
+      ],
+      "turnover_cr": 192.2
+    },
+    {
+      "symbol": "OBEROIRLTY",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1663 RSI=68"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1689.40"
+        ]
+      ],
+      "turnover_cr": 53.5
+    },
+    {
+      "symbol": "POLYCAB",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=9671 RSI=50"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=9833.00"
+        ]
+      ],
+      "turnover_cr": 245.6
+    },
+    {
+      "symbol": "SCI",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=304 RSI=63"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=324.00"
+        ]
+      ],
+      "turnover_cr": 151.9
+    },
+    {
+      "symbol": "SUZLON",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=56 RSI=60"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=56.12"
+        ]
+      ],
+      "turnover_cr": 448.4
+    },
+    {
+      "symbol": "TATACOMM",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1962 RSI=54"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=2017.30"
+        ]
+      ],
+      "turnover_cr": 149.8
+    },
+    {
+      "symbol": "TATATECH",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=750 RSI=51"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=779.10"
+        ]
+      ],
+      "turnover_cr": 104.3
+    },
+    {
+      "symbol": "TITAN",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=4214 RSI=54"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=4289.00"
+        ]
+      ],
+      "turnover_cr": 294.9
+    },
+    {
+      "symbol": "WELCORP",
+      "pre_score": 3.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1389 RSI=52"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=1429.08"
+        ]
+      ],
+      "turnover_cr": 81.6
+    },
+    {
+      "symbol": "ADANIPORTS",
+      "pre_score": 3.0,
+      "signals": [
+        [
+          "DBL-BTM",
+          "neckline=1857.80"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=1847.40"
+        ]
+      ],
+      "turnover_cr": 397.7
+    },
+    {
+      "symbol": "THERMAX",
+      "pre_score": 3.0,
+      "signals": [
+        [
+          "DBL-BTM",
+          "neckline=4889.00"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=4867.75"
+        ]
+      ],
+      "turnover_cr": 109.2
+    },
+    {
+      "symbol": "ABCAPITAL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=363 RSI=68"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 396.50"
+        ]
+      ],
+      "turnover_cr": 104.6
+    },
+    {
+      "symbol": "AUBANK",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1000 RSI=73"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1073.00"
+        ]
+      ],
+      "turnover_cr": 147.3
+    },
+    {
+      "symbol": "AXISBANK",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1318 RSI=87"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1385.90"
+        ]
+      ],
+      "turnover_cr": 974.8
+    },
+    {
+      "symbol": "BAJAJFINSV",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=1740 RSI=60"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1792.20"
+        ]
+      ],
+      "turnover_cr": 157.9
+    },
+    {
+      "symbol": "BAJFINANCE",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=920 RSI=80"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 993.90"
+        ]
+      ],
+      "turnover_cr": 821.2
+    },
+    {
+      "symbol": "BPCL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=301 RSI=64"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 316.80"
+        ]
+      ],
+      "turnover_cr": 235.4
+    },
+    {
+      "symbol": "CGCL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=207 RSI=68"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 219.10"
+        ]
+      ],
+      "turnover_cr": 65.9
+    },
+    {
+      "symbol": "CHOLAFIN",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1582 RSI=81"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1803.00"
+        ]
+      ],
+      "turnover_cr": 212.2
+    },
+    {
+      "symbol": "COFORGE",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1440 RSI=64"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1504.00"
+        ]
+      ],
+      "turnover_cr": 375.3
+    },
+    {
+      "symbol": "COROMANDEL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1890 RSI=69"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1995.00"
+        ]
+      ],
+      "turnover_cr": 70.7
+    },
+    {
+      "symbol": "DEEPAKFERT",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1496 RSI=74"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1607.30"
+        ]
+      ],
+      "turnover_cr": 55.3
+    },
+    {
+      "symbol": "FEDERALBNK",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=310 RSI=77"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 327.00"
+        ]
+      ],
+      "turnover_cr": 272.2
+    },
+    {
+      "symbol": "GAIL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=170 RSI=64"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 175.67"
+        ]
+      ],
+      "turnover_cr": 134.8
+    },
+    {
+      "symbol": "GODREJPROP",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1738 RSI=65"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1829.00"
+        ]
+      ],
+      "turnover_cr": 91.2
+    },
+    {
+      "symbol": "HDFCBANK",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=764 RSI=64"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 794.75"
+        ]
+      ],
+      "turnover_cr": 2733.3
+    },
+    {
+      "symbol": "HFCL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=188 RSI=55"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 206.92"
+        ]
+      ],
+      "turnover_cr": 752.4
+    },
+    {
+      "symbol": "HINDPETRO",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=391 RSI=62"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 414.00"
+        ]
+      ],
+      "turnover_cr": 199.3
+    },
+    {
+      "symbol": "ICICIBANK",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1299 RSI=81"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1377.40"
+        ]
+      ],
+      "turnover_cr": 1958.0
+    },
+    {
+      "symbol": "IDFCFIRSTB",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=75 RSI=72"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 79.59"
+        ]
+      ],
+      "turnover_cr": 207.1
+    },
+    {
+      "symbol": "INDHOTEL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=682 RSI=76"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 730.75"
+        ]
+      ],
+      "turnover_cr": 152.6
+    },
+    {
+      "symbol": "IOC",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=141 RSI=62"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 146.80"
+        ]
+      ],
+      "turnover_cr": 164.2
+    },
+    {
+      "symbol": "JINDALSAW",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=248 RSI=50"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 259.40"
+        ]
+      ],
+      "turnover_cr": 62.0
+    },
+    {
+      "symbol": "KALYANKJIL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=363 RSI=55"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 378.30"
+        ]
+      ],
+      "turnover_cr": 206.6
+    },
+    {
+      "symbol": "KARURVYSYA",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=289 RSI=59"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 295.65"
+        ]
+      ],
+      "turnover_cr": 65.8
+    },
+    {
+      "symbol": "KOTAKBANK",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=392 RSI=72"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 407.90"
+        ]
+      ],
+      "turnover_cr": 526.3
+    },
+    {
+      "symbol": "LODHA",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=905 RSI=62"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 938.95"
+        ]
+      ],
+      "turnover_cr": 165.2
+    },
+    {
+      "symbol": "LTF",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=278 RSI=67"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 297.85"
+        ]
+      ],
+      "turnover_cr": 110.8
+    },
+    {
+      "symbol": "NAVINFLUOR",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=7213 RSI=73"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 7710.50"
+        ]
+      ],
+      "turnover_cr": 95.6
+    },
+    {
+      "symbol": "NH",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1913 RSI=51"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1970.80"
+        ]
+      ],
+      "turnover_cr": 51.9
+    },
+    {
+      "symbol": "OFSS",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=9790 RSI=60"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 10510.00"
+        ]
+      ],
+      "turnover_cr": 242.4
+    },
+    {
+      "symbol": "PAGEIND",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=38772 RSI=65"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 41035.00"
+        ]
+      ],
+      "turnover_cr": 73.1
+    },
+    {
+      "symbol": "PHOENIXLTD",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1794 RSI=75"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1921.30"
+        ]
+      ],
+      "turnover_cr": 84.6
+    },
+    {
+      "symbol": "PIDILITIND",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1519 RSI=79"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1585.00"
+        ]
+      ],
+      "turnover_cr": 120.4
+    },
+    {
+      "symbol": "PNBHOUSING",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=1006 RSI=61"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1049.90"
+        ]
+      ],
+      "turnover_cr": 64.0
+    },
+    {
+      "symbol": "POONAWALLA",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=399 RSI=65"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 429.75"
+        ]
+      ],
+      "turnover_cr": 52.3
+    },
+    {
+      "symbol": "PRESTIGE",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1421 RSI=72"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1545.00"
+        ]
+      ],
+      "turnover_cr": 103.8
+    },
+    {
+      "symbol": "RADICO",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=3564 RSI=71"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 3774.50"
+        ]
+      ],
+      "turnover_cr": 83.6
+    },
+    {
+      "symbol": "RECLTD",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=347 RSI=67"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 365.30"
+        ]
+      ],
+      "turnover_cr": 180.3
+    },
+    {
+      "symbol": "SHREECEM",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=24688 RSI=66"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 26165.00"
+        ]
+      ],
+      "turnover_cr": 63.5
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1812 RSI=87"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1882.00"
+        ]
+      ],
+      "turnover_cr": 381.1
+    },
+    {
+      "symbol": "SYRMA",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1250 RSI=76"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1432.70"
+        ]
+      ],
+      "turnover_cr": 150.3
+    },
+    {
+      "symbol": "TATACAP",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=328 RSI=68"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 355.50"
+        ]
+      ],
+      "turnover_cr": 75.2
+    },
+    {
+      "symbol": "TITAGARH",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=868 RSI=65"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 926.00"
+        ]
+      ],
+      "turnover_cr": 84.8
+    },
+    {
+      "symbol": "UNITDSPR",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1286 RSI=76"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 1362.40"
+        ]
+      ],
+      "turnover_cr": 80.7
+    },
+    {
+      "symbol": "YESBANK",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=24 RSI=65"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 25.07"
+        ]
+      ],
+      "turnover_cr": 310.1
+    },
+    {
+      "symbol": "ZEEL",
+      "pre_score": 2.5,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=106 RSI=62"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 116.00"
+        ]
+      ],
+      "turnover_cr": 520.3
+    },
+    {
+      "symbol": "360ONE",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=1100 RSI=57"
+        ]
+      ],
+      "turnover_cr": 91.2
+    },
+    {
+      "symbol": "ACUTAAS",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=3159 RSI=56"
+        ]
+      ],
+      "turnover_cr": 115.2
+    },
+    {
+      "symbol": "ADANIGREEN",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1486 RSI=61"
+        ]
+      ],
+      "turnover_cr": 441.6
+    },
+    {
+      "symbol": "AEGISLOG",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=883 RSI=91"
+        ]
+      ],
+      "turnover_cr": 120.7
+    },
+    {
+      "symbol": "ALKEM",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=5347 RSI=69"
+        ]
+      ],
+      "turnover_cr": 63.7
+    },
+    {
+      "symbol": "AMBER",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=7686 RSI=56"
+        ]
+      ],
+      "turnover_cr": 279.7
+    },
+    {
+      "symbol": "ANANDRATHI",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1792 RSI=78"
+        ]
+      ],
+      "turnover_cr": 66.0
+    },
+    {
+      "symbol": "ANANTRAJ",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DBL-BTM",
+          "neckline=548.15"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 530.80"
+        ]
+      ],
+      "turnover_cr": 98.0
+    },
+    {
+      "symbol": "APARINDS",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=14707 RSI=77"
+        ]
+      ],
+      "turnover_cr": 282.8
+    },
+    {
+      "symbol": "ASIANPAINT",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 3/4 MA20=2693 RSI=52"
+        ]
+      ],
+      "turnover_cr": 303.1
+    },
+    {
+      "symbol": "AUROPHARMA",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=1456 RSI=64"
+        ]
+      ],
+      "turnover_cr": 159.2
+    },
+    {
+      "symbol": "BANDHANBNK",
+      "pre_score": 2.0,
+      "signals": [
+        [
+          "DAILY-BIAS",
+          "uptrend 4/4 MA20=207 RSI=55"
+        ]
+      ],
+      "turnover_cr": 176.7
+    },
+    {
+      "symbol": "ABB",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=7068 RSI=42"
+        ]
+      ],
+      "turnover_cr": 187.9
+    },
+    {
+      "symbol": "ADANIPOWER",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=229 RSI=49"
+        ]
+      ],
+      "turnover_cr": 639.9
+    },
+    {
+      "symbol": "BEL",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=414 RSI=52"
+        ]
+      ],
+      "turnover_cr": 451.1
+    },
+    {
+      "symbol": "BSE",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=4014 RSI=42"
+        ]
+      ],
+      "turnover_cr": 1445.0
+    },
+    {
+      "symbol": "COLPAL",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=2025 RSI=44"
+        ]
+      ],
+      "turnover_cr": 78.5
+    },
+    {
+      "symbol": "FORCEMOT",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=18252 RSI=45"
+        ]
+      ],
+      "turnover_cr": 171.5
+    },
+    {
+      "symbol": "GLENMARK",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=2189 RSI=51"
+        ]
+      ],
+      "turnover_cr": 123.6
+    },
+    {
+      "symbol": "GODFRYPHLP",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=2254 RSI=51"
+        ]
+      ],
+      "turnover_cr": 64.9
+    },
+    {
+      "symbol": "HINDCOPPER",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=522 RSI=33"
+        ]
+      ],
+      "turnover_cr": 177.9
+    },
+    {
+      "symbol": "HINDZINC",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=579 RSI=29"
+        ]
+      ],
+      "turnover_cr": 214.7
+    },
+    {
+      "symbol": "INFY",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1144 RSI=25"
+        ]
+      ],
+      "turnover_cr": 1216.4
+    },
+    {
+      "symbol": "IRFC",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=97 RSI=41"
+        ]
+      ],
+      "turnover_cr": 93.3
+    },
+    {
+      "symbol": "JINDALSTEL",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1157 RSI=23"
+        ]
+      ],
+      "turnover_cr": 133.6
+    },
+    {
+      "symbol": "JSWSTEEL",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1284 RSI=32"
+        ]
+      ],
+      "turnover_cr": 151.9
+    },
+    {
+      "symbol": "MARUTI",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=13268 RSI=54"
+        ]
+      ],
+      "turnover_cr": 488.7
+    },
+    {
+      "symbol": "MRPL",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=156 RSI=50"
+        ]
+      ],
+      "turnover_cr": 89.2
+    },
+    {
+      "symbol": "NATCOPHARM",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=906 RSI=42"
+        ]
+      ],
+      "turnover_cr": 76.1
+    },
+    {
+      "symbol": "NATIONALUM",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=390 RSI=26"
+        ]
+      ],
+      "turnover_cr": 433.0
+    },
+    {
+      "symbol": "NLCINDIA",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=329 RSI=40"
+        ]
+      ],
+      "turnover_cr": 211.5
+    },
+    {
+      "symbol": "NTPC",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=364 RSI=42"
+        ]
+      ],
+      "turnover_cr": 519.9
+    },
+    {
+      "symbol": "ONGC",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=255 RSI=16"
+        ]
+      ],
+      "turnover_cr": 321.8
+    },
+    {
+      "symbol": "PATANJALI",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=428 RSI=39"
+        ]
+      ],
+      "turnover_cr": 104.9
+    },
+    {
+      "symbol": "POWERINDIA",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=35579 RSI=36"
+        ]
+      ],
+      "turnover_cr": 681.3
+    },
+    {
+      "symbol": "SBILIFE",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1783 RSI=50"
+        ]
+      ],
+      "turnover_cr": 158.7
+    },
+    {
+      "symbol": "SIEMENS",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=3679 RSI=41"
+        ]
+      ],
+      "turnover_cr": 127.4
+    },
+    {
+      "symbol": "SWIGGY",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=252 RSI=44"
+        ]
+      ],
+      "turnover_cr": 278.5
+    },
+    {
+      "symbol": "TATACONSUM",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1126 RSI=30"
+        ]
+      ],
+      "turnover_cr": 155.7
+    },
+    {
+      "symbol": "TCS",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=2197 RSI=33"
+        ]
+      ],
+      "turnover_cr": 982.8
+    },
+    {
+      "symbol": "TMPV",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=382 RSI=25"
+        ]
+      ],
+      "turnover_cr": 432.6
+    },
+    {
+      "symbol": "TRITURBINE",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=683 RSI=47"
+        ]
+      ],
+      "turnover_cr": 50.8
+    },
+    {
+      "symbol": "VBL",
+      "pre_score": -2.0,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=527 RSI=38"
+        ]
+      ],
+      "turnover_cr": 260.8
+    },
+    {
+      "symbol": "JSWENERGY",
+      "pre_score": -1.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=576 RSI=43"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 576.80"
+        ]
+      ],
+      "turnover_cr": 151.5
+    },
+    {
+      "symbol": "MPHASIS",
+      "pre_score": -1.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=2301 RSI=39"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 2274.00"
+        ]
+      ],
+      "turnover_cr": 119.8
+    },
+    {
+      "symbol": "MUTHOOTFIN",
+      "pre_score": -1.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=3136 RSI=47"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 3138.60"
+        ]
+      ],
+      "turnover_cr": 217.3
+    },
+    {
+      "symbol": "OIL",
+      "pre_score": -1.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=449 RSI=14"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 419.25"
+        ]
+      ],
+      "turnover_cr": 141.3
+    },
+    {
+      "symbol": "PIIND",
+      "pre_score": -1.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=2792 RSI=53"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 2770.70"
+        ]
+      ],
+      "turnover_cr": 69.0
+    },
+    {
+      "symbol": "UPL",
+      "pre_score": -1.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=623 RSI=30"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 602.15"
+        ]
+      ],
+      "turnover_cr": 83.5
+    },
+    {
+      "symbol": "WIPRO",
+      "pre_score": -1.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=188 RSI=17"
+        ],
+        [
+          "PDH-CLOSE",
+          "closed near PDH 175.49"
+        ]
+      ],
+      "turnover_cr": 526.9
+    },
+    {
+      "symbol": "AWL",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=189 RSI=42"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=198.95"
+        ]
+      ],
+      "turnover_cr": 53.3
+    },
+    {
+      "symbol": "BAJAJ-AUTO",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=10182 RSI=25"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=10093.55"
+        ]
+      ],
+      "turnover_cr": 375.6
+    },
+    {
+      "symbol": "GMDCLTD",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=632 RSI=30"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=616.02"
+        ]
+      ],
+      "turnover_cr": 105.9
+    },
+    {
+      "symbol": "HCLTECH",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1152 RSI=33"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1173.60"
+        ]
+      ],
+      "turnover_cr": 311.0
+    },
+    {
+      "symbol": "HEROMOTOCO",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=4925 RSI=50"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=4961.65"
+        ]
+      ],
+      "turnover_cr": 252.3
+    },
+    {
+      "symbol": "HINDALCO",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1058 RSI=21"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=1019.43"
+        ]
+      ],
+      "turnover_cr": 652.7
+    },
+    {
+      "symbol": "JPPOWER",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=19 RSI=34"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=18.57"
+        ]
+      ],
+      "turnover_cr": 157.8
+    },
+    {
+      "symbol": "JUBLFOOD",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=424 RSI=46"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=434.00"
+        ]
+      ],
+      "turnover_cr": 87.6
+    },
+    {
+      "symbol": "LLOYDSME",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=1763 RSI=40"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=1809.30"
+        ]
+      ],
+      "turnover_cr": 79.8
+    },
+    {
+      "symbol": "LTM",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=3975 RSI=32"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=3906.88"
+        ]
+      ],
+      "turnover_cr": 155.8
+    },
+    {
+      "symbol": "MCX",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=2861 RSI=45"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=2909.90"
+        ]
+      ],
+      "turnover_cr": 953.8
+    },
+    {
+      "symbol": "NESTLEIND",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=1402 RSI=50"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=1454.90"
+        ]
+      ],
+      "turnover_cr": 235.3
+    },
+    {
+      "symbol": "NMDC",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=90 RSI=24"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=89.58"
+        ]
+      ],
+      "turnover_cr": 243.6
+    },
+    {
+      "symbol": "PERSISTENT",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=5019 RSI=38"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=5105.00"
+        ]
+      ],
+      "turnover_cr": 236.4
+    },
+    {
+      "symbol": "RPOWER",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=27 RSI=38"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=28.94"
+        ]
+      ],
+      "turnover_cr": 94.7
+    },
+    {
+      "symbol": "SAGILITY",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=40 RSI=49"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=41.14"
+        ]
+      ],
+      "turnover_cr": 57.9
+    },
+    {
+      "symbol": "SAIL",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=187 RSI=21"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=178.76"
+        ]
+      ],
+      "turnover_cr": 341.0
+    },
+    {
+      "symbol": "SOLARINDS",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=17966 RSI=45"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=18650.25"
+        ]
+      ],
+      "turnover_cr": 201.4
+    },
+    {
+      "symbol": "TATAELXSI",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=4188 RSI=28"
+        ],
+        [
+          "DBL-BTM",
+          "neckline=4157.00"
+        ]
+      ],
+      "turnover_cr": 86.1
+    },
+    {
+      "symbol": "TATAPOWER",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=405 RSI=32"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=402.45"
+        ]
+      ],
+      "turnover_cr": 222.4
+    },
+    {
+      "symbol": "TATASTEEL",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=202 RSI=18"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=195.48"
+        ]
+      ],
+      "turnover_cr": 615.9
+    },
+    {
+      "symbol": "VEDL",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=313 RSI=25"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=299.34"
+        ]
+      ],
+      "turnover_cr": 622.1
+    },
+    {
+      "symbol": "VMM",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 3/4 MA20=119 RSI=51"
+        ],
+        [
+          "FALL-WEDGE",
+          "upper=119.79"
+        ]
+      ],
+      "turnover_cr": 111.9
+    },
+    {
+      "symbol": "WAAREEENER",
+      "pre_score": -0.5,
+      "signals": [
+        [
+          "DAILY-BIAS-BEAR",
+          "downtrend 4/4 MA20=3064 RSI=45"
+        ],
+        [
+          "ASC-TRI",
+          "resistance=3111.48"
+        ]
+      ],
+      "turnover_cr": 219.0
+    }
+  ]
+}

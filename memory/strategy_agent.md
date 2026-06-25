@@ -2055,3 +2055,106 @@ Zero target hits from 11:00 onwards for the third year running (2024, 2025, 2026
 2025 WF5: Rs 4,94,961 (249 trades, 63.9% WR)
 2026 WF5: Rs 2,19,999 (116 trades, 62.9% WR — partial year)
 4-year cumulative: Rs 15,74,345 across 858 trades at 63.1% effective WR. All 4 years profitable. WF5 gate passed. Annualised 2026 run-rate (~Rs 4,40,000) is within the prior 3-year band. Engine is structurally sound.
+
+## Year 2023 Summary
+- Total trades        : 441 (220 LONG, 221 SHORT)
+- Exact target hits   : 203 (46.0%)  — price reached target
+- Profitable exits    : 121 (27.4%)  — TIME_EXIT with positive P&L
+- Losses              : 117 (26.5%)  — stopped out or negative exit
+- Effective win rate  : 73.5%
+- Total P&L           : Rs 1,306,622  (Long Rs 798,555 | Short Rs 508,067)
+
+### Strategy Performance — 2023
+| Strategy           | wt_long | wt_short |  Win%  | L_Sig | S_Sig | Verdict    |
+|--------------------|---------|----------|--------|-------|-------|------------|
+| ORB-15             | 3.00 | 3.00 |  64.0% |   50 |   50 | BEST |
+| ORB-30             | 3.00 | 3.00 |  65.5% |   50 |   50 | BEST |
+| PDH-PDL            | 3.00 | 3.00 |  60.0% |   50 |   50 | BEST |
+| VOL-SPIKE          | 3.00 | 1.00 |  80.8% |   13 |    0 | BEST |
+| RSI-EXT            | 3.00 | 0.25 |  55.0% |   50 |   50 | BEST |
+| BOLLINGER          | 3.00 | 1.50 |  59.5% |   50 |   50 | BEST |
+| GAP-FADE           | 3.00 | 1.69 |  68.8% |    6 |   10 | BEST |
+| SUPERTREND         | 3.00 | 3.00 |  63.5% |   50 |   50 | BEST |
+| MACD               | 3.00 | 2.25 |  59.5% |   50 |   50 | BEST |
+| SR-BREAK           | 3.00 | 3.00 |  63.0% |   50 |   50 | BEST |
+| FIRST-CANDLE       | 3.00 | 3.00 |  61.5% |   50 |   50 | BEST |
+| CPR                | 3.00 | 3.00 |  62.5% |   50 |   50 | BEST |
+| CAMARILLA          | 3.00 | 1.50 |  61.5% |   50 |   50 | BEST |
+| ADX-FILTER         | 3.00 | 2.25 |  60.5% |   50 |   50 | BEST |
+| STOCHASTIC         | 3.00 | 3.00 |  61.5% |   50 |   50 | BEST |
+| VPOC               | 3.00 | 3.00 |  64.0% |   50 |   50 | BEST |
+| REL-STR            | 3.00 | 3.00 |  60.5% |   50 |   50 | BEST |
+| DBL-BTM            | 3.00 | 1.00 |  64.0% |   50 |    0 | BEST |
+| DAILY-BIAS         | 3.00 | 0.38 |  56.0% |   50 |   50 | BEST |
+| PIN-BAR            | 3.00 | 2.25 |  58.5% |   50 |   50 | BEST |
+| INTRADAY-STRUCT    | 3.00 | 3.00 |  68.0% |   50 |   50 | BEST |
+| EMA-CROSS          | 1.90 | 1.00 |  63.0% |   50 |    0 | OK |
+| ASC-TRI            | 1.69 | 1.00 |  60.3% |   39 |    0 | OK |
+| NR7                | 1.00 | 1.00 |   n/a |    0 |    0 | NO SIGNALS |
+| DBL-TOP            | 1.00 | 1.50 |  52.0% |    0 |   50 | OK |
+| DESC-TRI           | 1.00 | 3.00 |  50.0% |    0 |   50 | OK |
+| RISE-WEDGE         | 1.00 | 0.75 |  53.4% |    0 |   29 | OK |
+| BEAR-FLAG          | 1.00 | 3.00 |  68.9% |    0 |   37 | OK |
+| FAILED-BO          | 1.00 | 0.38 |  46.0% |    0 |   50 | OK |
+| DEAD-CAT           | 1.00 | 1.00 |   n/a |    0 |    0 | NO SIGNALS |
+| OPEN-WEAK          | 1.00 | 0.12 |  43.0% |    0 |   50 | OK |
+| BEAR-ENGULF        | 1.00 | 0.19 |  43.0% |    0 |   50 | OK |
+| BULL-FLAG          | 0.75 | 1.00 |  60.0% |   15 |    0 | REDUCED |
+| GAP-CONT           | 0.50 | 1.00 |  66.7% |    9 |    0 | REDUCED |
+| FALL-WEDGE         | 0.50 | 1.00 |  62.5% |    4 |    0 | REDUCED |
+| VWAP-REV           | 0.12 | 0.10 |  37.0% |   19 |   50 | REDUCED |
+| VWAP-STDDEV        | 0.10 | 0.50 |  40.5% |   50 |   50 | SUPPRESSED |
+
+---
+
+## WF6 Training — Year 2023 Analysis (Dual-Direction: First LONG Calibration)
+
+- Total trades        : 474 (229 LONG + 245 SHORT) — first run with 1L+1S per day
+- Effective win rate  : LONG 75.1% | SHORT 70.2%
+- Total P&L           : Rs 13,81,518  (Long Rs 8,22,191 | Short Rs 5,59,327)
+- Weight updates      : 12 adaptive updates (Feb 6 through Dec 28)
+- Note: First ~22 days (Jan 2–30) ran with frozen weights before LEARNING_END_YEAR fix; adaptive training effective from Feb 1 onward
+
+### Driver Distribution — 2023 WF6 Training
+
+**LONG side:**
+| Driver       | Trades | Eff WR% | TH  | Stop | P&L         | Avg/trade |
+|--------------|--------|---------|-----|------|-------------|-----------|
+| CAMARILLA    |  138   |  79.7%  |  88 |  26  | Rs 5,86,128 | Rs 4,247  |
+| VPOC         |   47   |  74.5%  |  27 |  12  | Rs 1,32,627 | Rs 2,822  |
+| CPR          |   19   |  63.2%  |  15 |   4  | Rs   5,557  | Rs   292  |
+| ASC-TRI      |   14   |  78.6%  |   0 |   0  | Rs  56,501  | Rs 4,036  |
+| FIRST-CANDLE |    7   |  28.6%  |   1 |   3  | Rs   5,367  | Rs   767  |
+
+**SHORT side:**
+| Driver       | Trades | Eff WR% | TH  | Stop | P&L         | Avg/trade |
+|--------------|--------|---------|-----|------|-------------|-----------|
+| FIRST-CANDLE |  213   |  72.3%  |  75 |  27  | Rs 4,84,702 | Rs 2,276  |
+| SUPERTREND   |    9   |  55.6%  |   1 |   1  | Rs  16,109  | Rs 1,790  |
+| VPOC         |    8   |  75.0%  |   5 |   2  | Rs  37,172  | Rs 4,646  |
+| FAILED-BO    |    6   |  66.7%  |   1 |   1  | Rs  19,611  | Rs 3,268  |
+
+### 2023 WF6 Training — 5 Key Findings
+
+**FINDING 1 — CAMARILLA is the LONG equivalent of FIRST-CANDLE**
+138/229 LONG trades (60.3%) driven by CAMARILLA. 79.7% effective WR, 88 target hits, Rs 5,86,128 total, avg Rs 4,247 per trade. Its dominance on LONG mirrors FIRST-CANDLE's dominance on SHORT — both are structural, not regime-dependent.
+**Rule:** CAMARILLA must not be blocked or suppressed as a LONG driver. It is the primary LONG engine.
+
+**FINDING 2 — LONG outperforms SHORT in 2023 on both WR and per-trade value**
+LONG: 75.1% WR, avg Rs 3,590. SHORT: 70.2% WR, avg Rs 2,283. Total LONG P&L (Rs 8,22,191) was 47% higher than SHORT (Rs 5,59,327) on virtually the same trade count. 2023 was a moderate bull recovery year — opening-range LONG setups (CAMARILLA, VPOC) were richer than breakdown SHORT setups.
+**Rule:** Do not assume SHORT always dominates. Regime determines which direction is richer. Monitor the LONG/SHORT P&L split across 2024–2026 training to calibrate regime sensitivity.
+
+**FINDING 3 — ASC-TRI: profitable TIME_EXIT on LONG — do NOT block (opposite of DESC-TRI)**
+14 LONG trades, 78.6% effective WR, 0 target hits, net Rs 56,501. All exits are TIME_EXIT but positive — price drifts slowly upward. This is the structural mirror of DESC-TRI, which also has 0 target hits but loses on SHORT. Direction matters: ASC-TRI is valid on LONG; DESC-TRI is invalid on SHORT.
+**Rule:** DRIVER_BLOCKED must be direction-specific. DESC-TRI: blocked SHORT only. ASC-TRI: valid LONG driver, do not block.
+
+**FINDING 4 — FIRST-CANDLE is a LONG value-destroyer (28.6% WR) despite being the best SHORT driver (72.3%)**
+7 LONG trades driven by FIRST-CANDLE: 28.6% WR, 1 target hit, 3 stops, Rs 5,367 total on 7 trades (barely positive). The first-bar breakdown signal is inherently bearish — when it fires LONG the pattern fails 71% of the time.
+**Rule:** Add FIRST-CANDLE to LONG side of DRIVER_BLOCKED. Implement direction-specific blocking in engine: `DRIVER_BLOCKED_LONG` and `DRIVER_BLOCKED_SHORT` as separate sets.
+
+**FINDING 5 — LONG entry time degradation mirrors SHORT exactly**
+09:xx: 188 trades, 77.1% WR, 63.3% target hit rate.
+10:xx: 27 trades, 59.3% WR, 33.3% target hit rate.
+11:xx+: small sample, mixed.
+82% of all LONG trades enter in the 09:xx window. The opening-range patterns (CAMARILLA, VPOC) fire early by design. Late-day LONG entry quality collapses the same way SHORT does.
+**Rule:** The 11:30 hard cutoff applies to both directions equally. Implement as a shared NO_ENTRY_AFTER update (currently 14:00 — move to 11:30 after validating across 2024–2026 training).
