@@ -2,17 +2,17 @@
 S3 sync for trading agent historical data (data/stocks/ + data/index/).
 
 Upload from local machine (one-time, ~1.7 GB):
-    python -m data_pipeline.s3_sync upload --bucket YOUR_BUCKET
+    python -m data_pipeline.s3_sync upload --bucket amzn-s3-somal-bucket --prefix tradingagent
 
-Download on EC2 (one-time setup, pulls everything):
-    python -m data_pipeline.s3_sync download --bucket YOUR_BUCKET
+Download on EC2 (one-time setup):
+    python -m data_pipeline.s3_sync download --bucket amzn-s3-somal-bucket --prefix tradingagent
 
 Status check:
-    python -m data_pipeline.s3_sync status --bucket YOUR_BUCKET
+    python -m data_pipeline.s3_sync status --bucket amzn-s3-somal-bucket --prefix tradingagent
 
-S3 layout mirrors local layout exactly:
-    s3://bucket/data/stocks/2016/RELIANCE.parquet
-    s3://bucket/data/index/2016/NIFTY50.parquet
+S3 layout:
+    s3://amzn-s3-somal-bucket/tradingagent/data/stocks/2016/RELIANCE.parquet
+    s3://amzn-s3-somal-bucket/tradingagent/data/index/2016/NIFTY50.parquet
 
 Credentials:
   - EC2:   attach an IAM role with s3:GetObject + s3:PutObject on the bucket (no keys needed)
@@ -21,12 +21,10 @@ Credentials:
 
 import argparse
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import boto3
-from botocore.exceptions import ClientError
 from tqdm import tqdm
 
 from config.settings import DATA_DIR, STOCKS_DIR, INDEX_DIR
@@ -36,21 +34,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(me
 
 MAX_WORKERS = 16   # parallel S3 transfers; S3 is I/O bound so threading scales well
 
+S3_BUCKET  = "amzn-s3-somal-bucket"
+S3_PREFIX  = "tradingagent"           # folder inside the bucket
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLIC COMMANDS
 # ─────────────────────────────────────────────────────────────────────────────
 
-def upload(bucket: str) -> None:
+def upload(bucket: str, prefix: str) -> None:
     """Upload data/stocks/ and data/index/ to S3. Skips files already in sync."""
     s3 = boto3.client("s3")
-    local_files = _collect_local_files()
+    local_files = _collect_local_files(prefix)
     if not local_files:
         log.warning("No local parquet files found under data/stocks/ or data/index/")
         return
 
-    log.info(f"Uploading {len(local_files)} files → s3://{bucket}  ({MAX_WORKERS} parallel)")
-    existing = _list_s3_sizes(s3, bucket)
+    log.info(f"Uploading {len(local_files)} files → s3://{bucket}/{prefix}/  ({MAX_WORKERS} parallel)")
+    existing = _list_s3_sizes(s3, bucket, prefix)
     to_upload = [
         (local, key) for local, key in local_files
         if existing.get(key) != local.stat().st_size
@@ -66,18 +67,21 @@ def upload(bucket: str) -> None:
     log.info("Upload complete.")
 
 
-def download(bucket: str) -> None:
+def download(bucket: str, prefix: str) -> None:
     """Download data/stocks/ and data/index/ from S3 to local. Skips files already in sync."""
     s3 = boto3.client("s3")
-    s3_files = _list_s3_objects(s3, bucket)
+    s3_files = _list_s3_objects(s3, bucket, prefix)
     if not s3_files:
-        log.warning(f"No parquet files found in s3://{bucket} under data/")
+        log.warning(f"No parquet files found in s3://{bucket}/{prefix}/data/")
         return
 
-    log.info(f"Downloading {len(s3_files)} files from s3://{bucket}  ({MAX_WORKERS} parallel)")
+    log.info(f"Downloading {len(s3_files)} files from s3://{bucket}/{prefix}/  ({MAX_WORKERS} parallel)")
     to_download = []
+    s3_data_prefix = f"{prefix}/data/" if prefix else "data/"
     for key, s3_size in s3_files:
-        local = DATA_DIR / key.replace("data/", "", 1)
+        # strip prefix to get relative path e.g. "data/stocks/2016/RELIANCE.parquet"
+        relative = key[len(s3_data_prefix):]           # "stocks/2016/RELIANCE.parquet"
+        local = DATA_DIR / relative
         if not local.exists() or local.stat().st_size != s3_size:
             to_download.append((key, local, s3_size))
 
@@ -92,16 +96,16 @@ def download(bucket: str) -> None:
     log.info("Download complete.")
 
 
-def status(bucket: str) -> None:
+def status(bucket: str, prefix: str) -> None:
     """Compare local vs S3 file counts and sizes."""
     s3 = boto3.client("s3")
-    local_files = _collect_local_files()
-    s3_files    = _list_s3_objects(s3, bucket)
+    local_files = _collect_local_files(prefix)
+    s3_files    = _list_s3_objects(s3, bucket, prefix)
     s3_index    = {key: size for key, size in s3_files}
 
-    local_size  = sum(p.stat().st_size for p, _ in local_files)
-    s3_size     = sum(s3_index.values())
-    in_sync     = sum(1 for p, key in local_files if s3_index.get(key) == p.stat().st_size)
+    local_size = sum(p.stat().st_size for p, _ in local_files)
+    s3_size    = sum(s3_index.values())
+    in_sync    = sum(1 for p, key in local_files if s3_index.get(key) == p.stat().st_size)
 
     print(f"\n{'─'*50}")
     print(f"  Local  : {len(local_files):>5} files  ({local_size/1e9:.2f} GB)")
@@ -109,6 +113,7 @@ def status(bucket: str) -> None:
     print(f"  In sync: {in_sync:>5} files")
     print(f"  Need upload  : {len(local_files) - in_sync}")
     print(f"  Only in S3   : {len(s3_files) - in_sync}")
+    print(f"  URI    : s3://{bucket}/{prefix}/")
     print(f"{'─'*50}\n")
 
 
@@ -116,31 +121,36 @@ def status(bucket: str) -> None:
 # INTERNAL HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _collect_local_files() -> list[tuple[Path, str]]:
+def _make_key(prefix: str, relative: str) -> str:
+    """Build s3 key: 'tradingagent/data/stocks/2016/RELIANCE.parquet'"""
+    return f"{prefix}/{relative}" if prefix else relative
+
+
+def _collect_local_files(prefix: str) -> list[tuple[Path, str]]:
     """Return [(local_path, s3_key)] for all parquet files under stocks/ and index/."""
     results = []
     for base_dir in [STOCKS_DIR, INDEX_DIR]:
         for f in sorted(base_dir.rglob("*.parquet")):
-            # s3 key mirrors local path relative to DATA_DIR's parent (repo root)
-            key = f.relative_to(DATA_DIR.parent).as_posix()
+            relative = f.relative_to(DATA_DIR.parent).as_posix()   # "data/stocks/..."
+            key = _make_key(prefix, relative)
             results.append((f, key))
     return results
 
 
-def _list_s3_objects(s3, bucket: str) -> list[tuple[str, int]]:
-    """Return [(key, size)] for all objects under data/ prefix in the bucket."""
+def _list_s3_objects(s3, bucket: str, prefix: str) -> list[tuple[str, int]]:
+    """Return [(key, size)] for all parquet objects under prefix/data/ in the bucket."""
+    s3_prefix = f"{prefix}/data/" if prefix else "data/"
     results = []
     paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=bucket, Prefix="data/"):
+    for page in paginator.paginate(Bucket=bucket, Prefix=s3_prefix):
         for obj in page.get("Contents", []):
             if obj["Key"].endswith(".parquet"):
                 results.append((obj["Key"], obj["Size"]))
     return results
 
 
-def _list_s3_sizes(s3, bucket: str) -> dict[str, int]:
-    """Return {key: size} dict for fast lookup."""
-    return {key: size for key, size in _list_s3_objects(s3, bucket)}
+def _list_s3_sizes(s3, bucket: str, prefix: str) -> dict[str, int]:
+    return {key: size for key, size in _list_s3_objects(s3, bucket, prefix)}
 
 
 def _upload_one(s3, bucket: str, local: Path, key: str) -> None:
@@ -179,10 +189,10 @@ def _run_parallel(items: list, worker, desc: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sync trading data with S3")
     parser.add_argument("command", choices=["upload", "download", "status"])
-    parser.add_argument("--bucket", required=True, help="S3 bucket name (e.g. my-trading-data)")
+    parser.add_argument("--bucket", default=S3_BUCKET, help=f"S3 bucket name (default: {S3_BUCKET})")
+    parser.add_argument("--prefix", default=S3_PREFIX, help=f"Folder prefix inside bucket (default: {S3_PREFIX})")
     args = parser.parse_args()
 
-    # Load .env if present (local development)
     try:
         from dotenv import load_dotenv
         load_dotenv()
@@ -190,8 +200,8 @@ if __name__ == "__main__":
         pass
 
     if args.command == "upload":
-        upload(args.bucket)
+        upload(args.bucket, args.prefix)
     elif args.command == "download":
-        download(args.bucket)
+        download(args.bucket, args.prefix)
     elif args.command == "status":
-        status(args.bucket)
+        status(args.bucket, args.prefix)

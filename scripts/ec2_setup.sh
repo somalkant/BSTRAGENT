@@ -13,7 +13,8 @@
 
 set -e   # exit immediately on any error
 
-S3_BUCKET="${1:?Usage: ./ec2_setup.sh YOUR_S3_BUCKET}"
+S3_BUCKET="${1:-amzn-s3-somal-bucket}"
+S3_PREFIX="${2:-tradingagent}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "==========================================="
@@ -58,8 +59,8 @@ fi
 
 # ── 5. Download data from S3 ──────────────────
 echo ""
-echo "[5/6] Downloading historical data from s3://$S3_BUCKET  (~1.7 GB)..."
-python -m data_pipeline.s3_sync download --bucket "$S3_BUCKET"
+echo "[5/6] Downloading historical data from s3://$S3_BUCKET/$S3_PREFIX  (~1.7 GB)..."
+python -m data_pipeline.s3_sync download --bucket "$S3_BUCKET" --prefix "$S3_PREFIX"
 
 # ── 6. Quick sanity check ─────────────────────
 echo ""
