@@ -246,46 +246,59 @@ def main():
         log.info(f"RECOVERED open SHORT: {short_rec['symbol']} — monitoring for exit")
 
     # ── 7. Ticker WebSocket setup ────────────────────────────────────────────
-    tokens = dm.instrument_tokens
+    tokens     = dm.instrument_tokens
+    _last_tick = [None]   # [datetime | None] — updated on every tick; mutable so closure can write
+    _ws_holder = [None]   # [current ws] — swapped on reconnect
+
     log.info(f"Subscribing {len(tokens)} instrument tokens to {broker.display_name} ticker")
 
-    ws = KiteTicker(api_key, access_token)
+    def _make_ticker():
+        """Create, wire, and start a fresh ticker. Called at startup and on reconnect."""
+        try:
+            # Zerodha KiteTicker supports reconnect=True natively (default 50 retries).
+            # Groww GrowwTickerAdapter ignores unknown kwargs — safe to pass.
+            new_ws = KiteTicker(api_key, access_token, reconnect=True, reconnect_max_tries=50)
+        except TypeError:
+            new_ws = KiteTicker(api_key, access_token)
 
-    def on_connect(ws, response):
-        ws.subscribe(tokens)
-        ws.set_mode(ws.MODE_FULL, tokens)
-        log.info(f"{broker.display_name} ticker connected and subscribed")
+        def on_connect(ws, _response):
+            ws.subscribe(tokens)
+            ws.set_mode(ws.MODE_FULL, tokens)
+            log.info(f"{broker.display_name} ticker connected and subscribed")
 
-    def on_ticks(ws, ticks):
-        for tick in ticks:
-            dm.on_tick(tick)
-        if state.is_long_open() or state.is_short_open():
-            _check_exit(state, dm, today)
+        def on_ticks(_ws, ticks):
+            _last_tick[0] = datetime.now()
+            for tick in ticks:
+                dm.on_tick(tick)
+            if state.is_long_open() or state.is_short_open():
+                _check_exit(state, dm, today)
 
-    def on_close(ws, code, reason):
-        log.warning(f"KiteTicker disconnected: {code} {reason}")
+        def on_close(_ws, code, reason):
+            log.warning(f"Ticker disconnected: {code} {reason}")
 
-    def on_error(ws, code, reason):
-        log.error(f"KiteTicker error: {code} {reason}")
+        def on_error(_ws, code, reason):
+            log.error(f"Ticker error: {code} {reason}")
 
-    ws.on_connect = on_connect
-    ws.on_ticks   = on_ticks
-    ws.on_close   = on_close
-    ws.on_error   = on_error
+        new_ws.on_connect = on_connect
+        new_ws.on_ticks   = on_ticks
+        new_ws.on_close   = on_close
+        new_ws.on_error   = on_error
+        new_ws.connect(threaded=True)
+        return new_ws
 
-    # Connect in background thread — main thread handles scheduling
-    ws.connect(threaded=True)
+    _ws_holder[0] = _make_ticker()
 
     log.info("Waiting for market open (9:15 AM IST)...")
 
     # ── 8. Main scheduling loop ──────────────────────────────────────────────
     try:
-        _run_market_loop(ws, dm, state, weights, today)
+        _run_market_loop(_ws_holder, _last_tick, _make_ticker, dm, state, weights, today)
     except KeyboardInterrupt:
         log.info("Interrupted by user")
     finally:
-        ws.close()
-        log.info("KiteTicker disconnected. Agent stopped.")
+        if _ws_holder[0]:
+            _ws_holder[0].close()
+        log.info("Ticker disconnected. Agent stopped.")
 
     # ── 9. Day summary ───────────────────────────────────────────────────────
     _print_summary(state, today)
@@ -298,7 +311,10 @@ def main():
 # Market loop — runs in main thread
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _run_market_loop(ws, dm: LiveDataManager, state: AgentState,
+_TICKER_STALE_SECS = 300   # warn + reconnect if no tick for 5 minutes during market hours
+
+def _run_market_loop(ws_holder: list, last_tick: list, make_ticker,
+                     dm: LiveDataManager, state: AgentState,
                      weights: dict, today: date) -> None:
     """
     Main scheduling loop.
@@ -306,6 +322,7 @@ def _run_market_loop(ws, dm: LiveDataManager, state: AgentState,
       - Closes the bar on all candle builders
       - If no trade yet and time < 2 PM: runs scan_once()
       - If signal found: saves and monitors it
+      - Checks ticker staleness — reconnects if no tick for 5+ minutes
       - At 3:15 PM: forces TIME_EXIT and exits loop
     """
     while True:
@@ -330,6 +347,27 @@ def _run_market_loop(ws, dm: LiveDataManager, state: AgentState,
 
         if now_t < MARKET_OPEN:
             continue   # still pre-market, keep waiting
+
+        # ── Ticker staleness check ───────────────────────────────────────────
+        # If no tick has arrived for 5+ minutes during market hours, the
+        # WebSocket has silently died. Close and restart a fresh connection.
+        if MARKET_OPEN <= now_t < SQUARE_OFF and last_tick[0] is not None:
+            age = (datetime.now() - last_tick[0]).total_seconds()
+            if age > _TICKER_STALE_SECS:
+                log.warning(
+                    f"Ticker stale: no ticks for {age:.0f}s — reconnecting..."
+                )
+                try:
+                    ws_holder[0].close()
+                except Exception:
+                    pass
+                time_mod.sleep(2)
+                try:
+                    ws_holder[0] = make_ticker()
+                    last_tick[0] = datetime.now()   # reset clock; on_ticks will update
+                    log.info("Ticker reconnected successfully")
+                except Exception as e:
+                    log.error(f"Ticker reconnect failed: {e} — will retry next bar")
 
         # Close the completed 5-min bar
         bar_label = now.replace(second=0, microsecond=0) - timedelta(minutes=5)
@@ -396,6 +434,8 @@ def _run_market_loop(ws, dm: LiveDataManager, state: AgentState,
 # Exit monitoring
 # ─────────────────────────────────────────────────────────────────────────────
 
+_monitor_last_seen: dict[str, tuple[float, int]] = {}  # symbol -> (price, consecutive_unchanged_bars)
+
 def _log_trade_monitor(state: AgentState, dm: LiveDataManager) -> None:
     """Log current price and unrealised P&L every 5-min bar for each open position."""
     long_rec, short_rec, _, _ = state.snapshot()
@@ -412,6 +452,15 @@ def _log_trade_monitor(state: AgentState, dm: LiveDataManager) -> None:
         stop   = float(rec["signal"]["stop"])
         shares = rec["shares"]
 
+        # Staleness detector: warn if price unchanged for 2+ consecutive bars
+        prev_price, stale_count = _monitor_last_seen.get(symbol, (None, 0))
+        if prev_price is not None and last_price == prev_price:
+            stale_count += 1
+        else:
+            stale_count = 0
+        _monitor_last_seen[symbol] = (last_price, stale_count)
+        stale_tag = f"  *** STALE TICK — price unchanged for {stale_count + 1} bars ***" if stale_count >= 1 else ""
+
         if direction == "LONG":
             pnl       = round((last_price - entry) * shares, 2)
             pnl_pct   = round((last_price - entry) / entry * 100, 2)
@@ -426,8 +475,10 @@ def _log_trade_monitor(state: AgentState, dm: LiveDataManager) -> None:
         log.info(
             f"  MONITOR [{direction}] {symbol} @ {last_price:.2f} | "
             f"P&L Rs {pnl:+,.0f} ({pnl_pct:+.2f}%) | "
-            f"to_target={to_target:+.2f}% to_stop={to_stop:+.2f}%"
+            f"to_target={to_target:+.2f}% to_stop={to_stop:+.2f}%{stale_tag}"
         )
+        if stale_count >= 1:
+            log.warning(f"  STALE TICK [{symbol}]: WebSocket may have dropped — exit checks unreliable")
 
 
 def _check_exit(state: AgentState, dm: LiveDataManager, today: date) -> None:
