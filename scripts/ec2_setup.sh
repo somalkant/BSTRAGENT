@@ -1,14 +1,14 @@
 #!/bin/bash
 # EC2 bootstrap script for TradingAgent
-# Run once after launching a fresh Ubuntu 24.04 instance.
+# Run once after launching a fresh Ubuntu instance (24.04 or 26.04).
 #
 # Usage:
 #   chmod +x scripts/ec2_setup.sh
-#   ./scripts/ec2_setup.sh YOUR_S3_BUCKET
+#   ./scripts/ec2_setup.sh
 #
 # Assumes:
-#   - EC2 instance has an IAM role with s3:GetObject on YOUR_S3_BUCKET
-#   - Git repo already cloned (or run: git clone https://github.com/somalkant/TRAIAGENT.git)
+#   - EC2 instance has an IAM role with s3:GetObject on amzn-s3-somal-bucket
+#   - Git repo already cloned into this directory
 #   - You will fill in .env manually after this script runs
 
 set -e   # exit immediately on any error
@@ -20,20 +20,22 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "==========================================="
 echo "  TradingAgent EC2 Setup"
 echo "  Repo  : $REPO_DIR"
-echo "  Bucket: s3://$S3_BUCKET"
+echo "  Bucket: s3://$S3_BUCKET/$S3_PREFIX"
 echo "==========================================="
 
 # ── 1. System packages ────────────────────────
 echo ""
 echo "[1/6] Installing system packages..."
 sudo apt-get update -q
-sudo apt-get install -y -q python3.12 python3.12-venv python3.12-dev tmux git
+sudo apt-get install -y -q python3 python3-venv python3-dev python3-pip tmux git awscli
 
 # ── 2. Python virtual environment ─────────────
 echo ""
 echo "[2/6] Creating Python virtual environment..."
 cd "$REPO_DIR"
-python3.12 -m venv venv
+PYTHON=$(which python3)
+echo "  Using Python: $($PYTHON --version)"
+$PYTHON -m venv venv
 source venv/bin/activate
 
 # ── 3. Install Python dependencies ────────────
@@ -59,8 +61,10 @@ fi
 
 # ── 5. Download data from S3 ──────────────────
 echo ""
-echo "[5/6] Downloading historical data from s3://$S3_BUCKET/$S3_PREFIX  (~1.7 GB)..."
-python -m data_pipeline.s3_sync download --bucket "$S3_BUCKET" --prefix "$S3_PREFIX"
+echo "[5/6] Downloading historical data from s3://$S3_BUCKET/$S3_PREFIX  (~1.7 GB, using aws s3 sync)..."
+mkdir -p data/stocks data/index
+aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX/data/stocks/" data/stocks/
+aws s3 sync "s3://$S3_BUCKET/$S3_PREFIX/data/index/"  data/index/
 
 # ── 6. Quick sanity check ─────────────────────
 echo ""
@@ -74,23 +78,21 @@ print(f'  data/index  : {len(index)} parquet files')
 if len(stocks) < 100:
     print('  WARNING: fewer files than expected — check S3 sync')
 else:
-    print('  Data looks good.')
+    print('  All good — data looks complete.')
 "
 
 echo ""
 echo "==========================================="
 echo "  Setup complete!"
 echo ""
-echo "  To start the live agent in a tmux session:"
-echo "    tmux new -s live"
+echo "  Start the full 3-4 day pipeline:"
+echo "    tmux new -s pipeline"
 echo "    source venv/bin/activate"
-echo "    python live/agent.py"
+echo "    python run_full_pipeline.py --dry-run   # preview"
+echo "    python run_full_pipeline.py             # start"
 echo "    (Ctrl+B then D to detach)"
 echo ""
-echo "  To run backtests:"
-echo "    source venv/bin/activate"
-echo "    python run_analysis.py --year 2023"
-echo ""
-echo "  To watch logs:"
-echo "    tail -f logs/live_\$(date +%Y-%m-%d).log"
+echo "  Watch progress from anywhere:"
+echo "    tail -f logs/pipeline_*.log"
+echo "    tail -f logs/analysis_2016.log"
 echo "==========================================="
