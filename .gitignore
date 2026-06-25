@@ -1,5 +1,6 @@
 # Credentials — NEVER commit these
 .env
+*.pem
 checkpoints/access_token.json
 
 # Checkpoints — runtime state, never commit (EC2 pulls from S3; local reads from disk)
