@@ -42,7 +42,11 @@ source venv/bin/activate
 echo ""
 echo "[3/6] Installing Python dependencies (this takes ~3 min)..."
 pip install --quiet --upgrade pip
-pip install --quiet -r requirements.txt
+# Use requirements-ec2.txt (strips vectorbt/numba which don't support Python 3.14)
+REQ_FILE="requirements-ec2.txt"
+[ -f "$REQ_FILE" ] || REQ_FILE="requirements.txt"
+echo "  Using: $REQ_FILE"
+pip install --quiet -r "$REQ_FILE"
 
 # ── 4. Environment file ────────────────────────
 echo ""

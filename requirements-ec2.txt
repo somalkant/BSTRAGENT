@@ -1,0 +1,34 @@
+# EC2 pipeline requirements — stripped of dev tools and Python-3.14-incompatible packages.
+# vectorbt/numba excluded: numba supports only >=3.10,<3.14.
+# jupyterlab/streamlit/plotly excluded: not needed for the WF backtesting pipeline.
+
+# Kite Connect API (may be imported by config/settings)
+kiteconnect>=5.0.1
+
+# Data & Processing
+pandas>=2.1.0
+polars>=0.20.0
+pyarrow>=14.0.0
+numpy>=1.26.0
+
+# Technical Indicators
+pandas-ta>=0.4.0
+
+# Free data for global cues (SGX Nifty, Dow futures)
+yfinance>=0.2.36
+
+# Environment / Config
+python-dotenv>=1.0.0
+
+# HTTP / Retries
+requests>=2.31.0
+urllib3>=2.0.0
+
+# Progress bars
+tqdm>=4.66.0
+
+# Scheduling
+schedule>=1.2.0
+
+# AWS S3 sync
+boto3>=1.34.0
