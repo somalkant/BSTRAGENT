@@ -51,6 +51,21 @@ pip install --quiet -r "$REQ_FILE"
 # Install with --no-deps — it only uses numba for optional JIT; EMA/RSI/etc. work without it.
 echo "  Installing pandas-ta (no-deps to skip numba)..."
 pip install --quiet "pandas-ta>=0.4.0" --no-deps
+# Install a numba stub so pandas-ta's top-level "from numba import njit" succeeds.
+# @njit decorated functions run in pure Python — correct results, just without JIT speedup.
+mkdir -p /tmp/numba_stub/numba
+cat > /tmp/numba_stub/numba/__init__.py << 'PYEOF'
+def njit(*a, **kw):
+    return a[0] if a and callable(a[0]) else (lambda f: f)
+jit = vectorize = guvectorize = njit
+prange = range
+float32 = float64 = float
+int32 = int64 = int
+boolean = bool
+PYEOF
+printf '[build-system]\nrequires = ["setuptools"]\nbuild-backend = "setuptools.backends.legacy:build"\n[project]\nname = "numba"\nversion = "0.59.99"\n' > /tmp/numba_stub/pyproject.toml
+pip install --quiet /tmp/numba_stub
+echo "  numba stub installed"
 
 # ── 4. Environment file ────────────────────────
 echo ""
