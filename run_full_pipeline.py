@@ -194,6 +194,42 @@ def main():
     log.info("  checkpoints/wf_results.json                ← which WF windows passed gate")
     log.info("=" * 65)
 
+    # ── upload results to S3 so local machine can pull them ──────────────────
+    _upload_results_to_s3(python, pipeline_log)
+
+
+def _upload_results_to_s3(python: str, pipeline_log: Path) -> None:
+    """Sync checkpoints/ and logs/ back to S3 so results are accessible without SSH."""
+    import shutil
+    log.info("")
+    log.info("Uploading results to S3...")
+
+    bucket = "amzn-s3-somal-bucket"
+    prefix = "tradingagent"
+
+    # Use aws cli (already installed on EC2 via ec2_setup.sh)
+    aws = shutil.which("aws")
+    if not aws:
+        log.warning("aws CLI not found — skipping S3 upload. Copy checkpoints/ manually via SCP.")
+        log.warning("  scp -i your-key.pem ubuntu@<EC2-IP>:~/TRAIAGENT/checkpoints/ .")
+        return
+
+    dirs = [
+        (str(BASE_DIR / "checkpoints"), f"s3://{bucket}/{prefix}/checkpoints/"),
+        (str(LOG_DIR),                  f"s3://{bucket}/{prefix}/logs/"),
+    ]
+    for local_dir, s3_uri in dirs:
+        cmd = [aws, "s3", "sync", local_dir, s3_uri, "--exclude", "access_token.json"]
+        log.info(f"  aws s3 sync {local_dir.split('/')[-1]}/ → {s3_uri}")
+        rc = _run(cmd, pipeline_log)
+        if rc != 0:
+            log.warning(f"  S3 upload failed for {local_dir} (exit {rc}) — results still on EC2")
+
+    log.info("")
+    log.info("Results uploaded. Pull to your local machine with:")
+    log.info(f"  aws s3 sync s3://{bucket}/{prefix}/checkpoints/ checkpoints/")
+    log.info(f"  aws s3 sync s3://{bucket}/{prefix}/logs/        logs/ec2/")
+
 
 if __name__ == "__main__":
     main()
