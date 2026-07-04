@@ -30,8 +30,10 @@ from scipy.stats import beta as beta_dist
 from config.settings import (
     BAYES_ALPHA0, BAYES_BETA0, BAYES_DECAY, WINSOR_MAX_LOSS_R,
     SHRINK_K, PRIOR_PWIN, BAYES_WEIGHT_SCALE, MIN_WEIGHT, MAX_WEIGHT,
-    BAYES_STATE_FILE,
+    BAYES_STATE_FILE, REGIME_MIN_NEFF,
 )
+
+GLOBAL = "global"
 
 log = logging.getLogger(__name__)
 
@@ -91,6 +93,23 @@ class Posterior:
         return max(MIN_WEIGHT, min(MAX_WEIGHT, w))
 
 
+def _blend(p1: Posterior, p2: Posterior, w1: float) -> Posterior:
+    """Linear blend of two regime posteriors (B3 Fix 2). mu, ci_width, n_eff blend;
+    used only for EV/scoring, so alpha/beta are nominal (never re-sampled downstream)."""
+    w1 = max(0.0, min(1.0, w1))
+    w2 = 1.0 - w1
+    mu = w1 * p1.mu + w2 * p2.mu
+    ci = w1 * p1.ci_width + w2 * p2.ci_width
+    n_eff = w1 * p1.n_eff + w2 * p2.n_eff
+    pscale = max(0.0, min(1.0, 1.0 - ci / _PRIOR_CI_WIDTH))
+    return Posterior(
+        strategy=p1.strategy, direction=p1.direction,
+        alpha=mu * 10.0, beta=(1.0 - mu) * 10.0, n_eff=n_eff,
+        mu=mu, mu_conservative=max(0.0, mu - ci / 2.0), ci_width=ci,
+        posterior_scale=pscale,
+    )
+
+
 @dataclass
 class _Cell:
     alpha: float
@@ -109,15 +128,32 @@ class BayesianState:
         self.alpha0 = float(alpha0)
         self.beta0  = float(beta0)
         self.decay  = float(decay)
+        # GLOBAL posterior — {strategy: {direction: _Cell}} (Phase 1 layout, unchanged)
         self._state: dict[str, dict[str, _Cell]] = {}
+        # Regime buckets — {strategy: {direction: {regime: _Cell}}} (Phase 2 B3)
+        self._rstate: dict[str, dict[str, dict[str, _Cell]]] = {}
 
     # ── internal ──────────────────────────────────────────────────────────────
-    def _cell(self, strategy: str, direction) -> _Cell:
+    def _cell(self, strategy: str, direction, regime: str = GLOBAL) -> _Cell:
         d = _dir_key(direction)
-        strat = self._state.setdefault(strategy, {})
-        if d not in strat:
-            strat[d] = _Cell(self.alpha0, self.beta0, 0.0)
-        return strat[d]
+        if regime == GLOBAL:
+            strat = self._state.setdefault(strategy, {})
+            if d not in strat:
+                strat[d] = _Cell(self.alpha0, self.beta0, 0.0)
+            return strat[d]
+        buckets = self._rstate.setdefault(strategy, {}).setdefault(d, {})
+        if regime not in buckets:
+            buckets[regime] = _Cell(self.alpha0, self.beta0, 0.0)
+        return buckets[regime]
+
+    @staticmethod
+    def _apply(cell: _Cell, score: float, decay: float) -> None:
+        cell.alpha *= decay
+        cell.beta  *= decay
+        cell.n_eff *= decay
+        cell.alpha += score
+        cell.beta  += (1.0 - score)
+        cell.n_eff += 1.0
 
     # ── scoring ───────────────────────────────────────────────────────────────
     @staticmethod
@@ -141,22 +177,18 @@ class BayesianState:
 
     # ── update ────────────────────────────────────────────────────────────────
     def update(self, strategy: str, direction, pnl_rs: float,
-               risk_amount: float, rr: float) -> dict:
+               risk_amount: float, rr: float, regime: str = GLOBAL) -> dict:
         """
-        Apply one settled trade to the (strategy, direction) posterior.
-        Decay is applied to alpha, beta AND n_eff before the new evidence lands.
-        Returns a small dict describing the update (for logging / tests).
+        Apply one settled trade. The GLOBAL posterior is always updated; when a
+        non-global regime is given, that regime bucket is updated too (B3). Decay
+        is applied to alpha, beta AND n_eff before the new evidence lands.
         """
         score, raw, winsorized = self.score_from_pnl(pnl_rs, risk_amount, rr)
-        cell = self._cell(strategy, direction)
 
-        cell.alpha *= self.decay
-        cell.beta  *= self.decay
-        cell.n_eff *= self.decay
-
-        cell.alpha += score
-        cell.beta  += (1.0 - score)
-        cell.n_eff += 1.0
+        gcell = self._cell(strategy, direction, GLOBAL)
+        self._apply(gcell, score, self.decay)
+        if regime and regime != GLOBAL:
+            self._apply(self._cell(strategy, direction, regime), score, self.decay)
 
         if winsorized:
             used_r = max(WINSOR_MAX_LOSS_R, min(rr, raw))
@@ -164,16 +196,15 @@ class BayesianState:
                      f"{strategy} {_dir_key(direction)}]")
 
         return {
-            "strategy": strategy, "direction": _dir_key(direction),
+            "strategy": strategy, "direction": _dir_key(direction), "regime": regime,
             "score": round(score, 4), "raw_R": round(raw, 3),
             "winsorized": winsorized,
-            "alpha": round(cell.alpha, 4), "beta": round(cell.beta, 4),
-            "n_eff": round(cell.n_eff, 4),
+            "alpha": round(gcell.alpha, 4), "beta": round(gcell.beta, 4),
+            "n_eff": round(gcell.n_eff, 4),
         }
 
     # ── query ─────────────────────────────────────────────────────────────────
-    def get_posterior(self, strategy: str, direction) -> Posterior:
-        cell = self._cell(strategy, direction)
+    def _posterior_from_cell(self, strategy, direction, cell: _Cell) -> Posterior:
         a, b = cell.alpha, cell.beta
         mu = a / (a + b)
         q25 = float(beta_dist.ppf(0.25, a, b))
@@ -187,8 +218,47 @@ class BayesianState:
             posterior_scale=posterior_scale,
         )
 
-    def mu(self, strategy: str, direction) -> float:
-        return self.get_posterior(strategy, direction).mu
+    def get_posterior(self, strategy: str, direction, regime: str = GLOBAL) -> Posterior:
+        """
+        Regime-conditional posterior with fallback: use the regime bucket only when
+        its n_eff >= REGIME_MIN_NEFF, else the global posterior (B3).
+        """
+        if regime and regime != GLOBAL:
+            rcell = self._cell(strategy, direction, regime)
+            if rcell.n_eff >= REGIME_MIN_NEFF:
+                return self._posterior_from_cell(strategy, direction, rcell)
+        return self._posterior_from_cell(strategy, direction, self._cell(strategy, direction, GLOBAL))
+
+    def get_posterior_blended(self, strategy: str, direction, vix: float, adx: float,
+                              active_regime: str, vix_band_lo: float, vix_band_hi: float,
+                              adx_threshold: float, adx_band: float) -> Posterior:
+        """
+        Boundary blending (B3 Fix 2): linearly blend the two adjacent regime posteriors
+        by distance from the boundary. R4 is never blended. Used for EV/scoring only.
+        """
+        from config.settings import DEFAULT_REGIME
+        def P(reg):
+            return self.get_posterior(strategy, direction, reg)
+
+        if active_regime == "R4":
+            return P("R4")
+
+        # VIX boundary: R1 vs (R2 trending / R3 sideways)
+        if vix_band_hi > vix_band_lo and vix_band_lo < vix < vix_band_hi \
+                and active_regime in ("R1", "R2", "R3"):
+            w_r1 = max(0.0, min(1.0, (vix - vix_band_lo) / (vix_band_hi - vix_band_lo)))
+            other = "R2" if adx > adx_threshold else "R3"
+            return _blend(P("R1"), P(other), w_r1)
+
+        # ADX boundary: R2 vs R3 (VIX already below band)
+        if abs(adx - adx_threshold) < adx_band and active_regime in ("R2", "R3"):
+            w_r2 = max(0.0, min(1.0, (adx - (adx_threshold - adx_band)) / (2 * adx_band)))
+            return _blend(P("R2"), P("R3"), w_r2)
+
+        return P(active_regime if active_regime else DEFAULT_REGIME)
+
+    def mu(self, strategy: str, direction, regime: str = GLOBAL) -> float:
+        return self.get_posterior(strategy, direction, regime).mu
 
     def has(self, strategy: str, direction) -> bool:
         d = _dir_key(direction)
@@ -196,13 +266,22 @@ class BayesianState:
 
     # ── persistence ───────────────────────────────────────────────────────────
     def to_dict(self) -> dict:
-        return {
-            "_meta": {"alpha0": self.alpha0, "beta0": self.beta0, "decay": self.decay},
-            **{
-                strat: {d: asdict(cell) for d, cell in dirs.items()}
-                for strat, dirs in sorted(self._state.items())
-            },
-        }
+        """Schema: {strategy: {direction: {"global": cell, "R1": cell, ...}}}."""
+        out: dict = {"_meta": {"alpha0": self.alpha0, "beta0": self.beta0, "decay": self.decay}}
+        strategies = sorted(set(self._state) | set(self._rstate))
+        for strat in strategies:
+            dirs = {}
+            all_dirs = set(self._state.get(strat, {})) | set(self._rstate.get(strat, {}))
+            for d in sorted(all_dirs):
+                cells = {}
+                g = self._state.get(strat, {}).get(d)
+                if g is not None:
+                    cells[GLOBAL] = asdict(g)
+                for reg, c in self._rstate.get(strat, {}).get(d, {}).items():
+                    cells[reg] = asdict(c)
+                dirs[d] = cells
+            out[strat] = dirs
+        return out
 
     def save(self, path: Path | str | None = None) -> Path:
         path = Path(path) if path is not None else BAYES_STATE_FILE
@@ -224,7 +303,15 @@ class BayesianState:
         for strat, dirs in data.items():
             if strat.startswith("_"):
                 continue
-            for d, cell in dirs.items():
-                obj._state.setdefault(strat, {})[d] = _Cell(
-                    float(cell["alpha"]), float(cell["beta"]), float(cell["n_eff"]))
+            for d, val in dirs.items():
+                if isinstance(val, dict) and "alpha" in val:      # Phase-1 flat format -> global
+                    obj._state.setdefault(strat, {})[d] = _Cell(
+                        float(val["alpha"]), float(val["beta"]), float(val["n_eff"]))
+                else:                                             # Phase-2 regime-nested format
+                    for reg, cell in val.items():
+                        c = _Cell(float(cell["alpha"]), float(cell["beta"]), float(cell["n_eff"]))
+                        if reg == GLOBAL:
+                            obj._state.setdefault(strat, {})[d] = c
+                        else:
+                            obj._rstate.setdefault(strat, {}).setdefault(d, {})[reg] = c
         return obj

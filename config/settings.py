@@ -287,3 +287,57 @@ BAYES_STATE_FILE = CHECKPOINT_DIR / "strategy_bayes.json"
 
 # Initial training window (before first WF freeze) — data <= 2018 only for B0
 WF1_TRAIN_END_YEAR = 2018
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 2 — ENRICHMENT LAYER  (plan_phase2.md)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── B3. Regime-conditional posteriors ────────────────────────────────────────
+REGIME_MIN_NEFF   = 20        # use regime-specific posterior only when n_eff >= 20
+REGIMES           = ("R1", "R2", "R3", "R4")   # R1 HIGH_VIX, R2 TRENDING, R3 SIDEWAYS, R4 CRASH
+DEFAULT_REGIME    = "R3"      # startup default (SIDEWAYS)
+
+# Rolling-percentile VIX threshold (deterministic, lookahead-free: data <= t-1 only)
+VIX_PCTILE_WINDOW = 252       # trailing trading days
+VIX_R1_PCTILE     = 80        # regime threshold = trailing P80 of VIX closes
+VIX_BAND_LO_PCTILE = 75       # blend zone floor
+VIX_BAND_HI_PCTILE = 85       # blend zone ceiling
+ADX_THRESHOLD     = 25.0
+ADX_BAND          = 2.0       # blend zone ADX in [23, 27]; ADX stays absolute
+CRASH_NIFTY_RET   = -2.0      # R4: Nifty day-return < -2%  (absolute)
+HYSTERESIS_DAYS   = 3         # R1/R2/R3 change commits after 3 consecutive days; R4 immediate
+
+# ── B3b. Per-stock behavior prior ────────────────────────────────────────────
+STOCK_TYPE_ALPHA0 = 5.0       # Beta(5,5): neutral 50/50, more conservative than strategy prior
+STOCK_TYPE_BETA0  = 5.0
+STOCK_TYPE_MIN_NEFF = 15      # neutral modifier (1.0) below this
+STOCK_TYPE_FILE   = CHECKPOINT_DIR / "stock_type_bayes.json"
+
+# ── B3c. Hierarchical cluster priors ─────────────────────────────────────────
+K_HIER = 25.0                 # mu_used = w*mu_strategy + (1-w)*mu_cluster, w = n_eff/(n_eff+K_HIER)
+
+# ── B3d. Change-point detection ──────────────────────────────────────────────
+CHANGEPOINT_HAZARD = 1.0 / 200.0   # prior prob of a change per trade
+CHANGEPOINT_ALARM  = 0.70          # temper posterior when p_change > this
+CHANGEPOINT_TEMPER = 0.5           # evidence halved toward prior on alarm
+CHANGEPOINT_STATE_FILE = CHECKPOINT_DIR / "changepoint_state.json"
+
+# ── B4e. Execution-quality layer ─────────────────────────────────────────────
+EXEC_CHASE_VETO_ATR   = 4.0    # ext > 4 ATR -> hard veto [EXEC_VETO chase]
+EXEC_SKIP_FLOOR       = 0.25   # exec_mult < floor -> [EXEC_SKIP]
+EXEC_MS_ACCEPT_ATR    = 0.3    # one close beyond a level by > 0.3 ATR accepts it
+EXEC_MS_ACCEPT_CLOSES = 2      # or >= 2 consecutive closes beyond
+EXEC_EE_EXT_HI        = 4.0    # ee_ext reaches 0.25 at 4 ATR extension
+EXEC_EE_VWAP_LO_ATR   = 4.0    # ee_vwap 1.0 within 4 ATR of VWAP
+EXEC_EE_VWAP_HI_ATR   = 8.0    # ee_vwap 0.5 at 8 ATR
+EXEC_EE_CONSEC_LO     = 4      # ee_consec 1.0 up to 4 same-dir candles
+EXEC_EE_CONSEC_HI     = 8      # ee_consec 0.5 at 8
+
+# ── B4f. Context layer ───────────────────────────────────────────────────────
+BREADTH_LONG_MIN   = 0.30      # LONG with advancers < 30% -> context_mult 0.7
+BREADTH_SHORT_MAX  = 0.70      # SHORT with advancers > 70% -> context_mult 0.7
+CONTEXT_MULT_OPPOSED = 0.7
+SIGNAL_LABEL_ATR_MULT = 0.5    # signal-outcome label: 0.5 ATR move within
+SIGNAL_LABEL_BARS     = 12     #   12 bars (1 hour)
+EARNINGS_CALENDAR_FILE = BASE_DIR / "config" / "earnings_calendar.json"
