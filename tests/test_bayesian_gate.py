@@ -130,7 +130,7 @@ def test_clean_pass_full_size():
     r = evaluate_entry(_sig(B, -1), {B: _sig(B, -1), D: _sig(D, -1)}, st)
     assert r.passed and not r.clusters.contradicting
     assert r.gate_mult == pytest.approx(1.0)          # EV & driver both past full-size anchors
-    assert "CONFIRMED—CLEAN" in r.log_line()
+    assert "CONFIRMED-CLEAN" in r.log_line()
 
 
 def test_soft_gate_token_size_near_ev_floor():

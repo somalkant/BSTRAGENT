@@ -214,6 +214,17 @@ BAYES_WEIGHT_SCALE = 10.0
 SHRINK_K   = 30.0            # P(win) = w*mu + (1-w)*0.5, w = n_eff/(n_eff+K)
 PRIOR_PWIN = 0.50            # neutral prior P(win) shrinkage target
 
+# ── Cold-start burn-in (resolves the clean-start deadlock) ───────────────────
+# A clean Beta(3,3) start has mu=0.50 and posterior_scale=0, so the driver gate
+# (>=0.52) and Kelly sizing (scale 0 -> size 0) both block the first trade -> no
+# trades -> no evidence. The plan's intent ("token size — the posterior still
+# collects evidence"; "new strategies: tiny position until evidence accumulates")
+# is realised here: while a driver has < BAYES_BURN_IN_NEFF effective trades, the
+# evidence gates (driver_mu, EV>=0.15) relax to EV>0 and the trade sizes at a fixed
+# tiny exploration risk. Once evidence accrues the strict gates + real Kelly take over.
+BAYES_BURN_IN_NEFF    = 20
+BURN_IN_RISK_FRACTION = 0.0005    # 0.05% of capital per burn-in exploration trade
+
 # ── 2f/2g. Soft entry gates (ramps, not cliffs) ──────────────────────────────
 EV_GATE_LOW   = 0.15         # EV < 0.15 -> reject; ev_mult ramps 0->1 over
 EV_GATE_HIGH  = 0.25         #   [0.15, 0.25]

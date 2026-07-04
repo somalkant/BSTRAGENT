@@ -26,6 +26,7 @@ from config.settings import (
     EV_GATE_LOW, EV_GATE_HIGH, DRIVER_MU_LOW, DRIVER_MU_HIGH,
     EFF_CLUSTER_MIN, MAX_CONTRADICTING, VOTE_C_FLOOR, VOTE_C_SCALE,
     CONTEXT_META_CLUSTERS, EVENT_MIN_EV, EVENT_MIN_CLUSTERS,
+    BAYES_BURN_IN_NEFF,
 )
 from weights.bayesian import BayesianState
 
@@ -90,15 +91,16 @@ class GateResult:
     driver_mult:   float
     clusters:      ClusterResult
     cf_contra:     bool = False    # would the weighted contradiction rule have admitted it?
+    burn_in:       bool = False    # driver still below evidence threshold -> token exploration size
 
     def log_line(self, symbol: str = "", driver: str = "") -> str:
         c = self.clusters
         conf = "".join(sorted(c.confirmed))
         contra = "".join(sorted(c.contradicting))
         cvec = ",".join(f"{k}:{v:.2f}" for k, v in sorted(c.confidence.items()))
-        verdict = ("CONFIRMED—CLEAN" if self.passed and not c.contradicting
-                   else "CONFIRMED—CONTESTED" if self.passed
-                   else f"REJECTED—{self.reason}")
+        verdict = ("CONFIRMED-CLEAN" if self.passed and not c.contradicting
+                   else "CONFIRMED-CONTESTED" if self.passed
+                   else f"REJECTED-{self.reason}")
         return (f"{symbol} {driver} clusters={len(c.confirmed)}({conf}) c=({cvec}) "
                 f"eff_w={c.eff_weighted:.2f} eff_bin={c.eff_binary:.2f} vs={len(c.contradicting)}({contra}) "
                 f"driver_mu={self.driver_mu:.3f} driver_p={self.driver_p:.3f} EV={self.ev:+.2f} "
@@ -166,6 +168,7 @@ def evaluate_entry(driver_signal, signals: dict, bayes: BayesianState,
     driver_p = post.p_win()
     driver_mu = post.mu
     ev = post.ev(rr)
+    burn_in = post.n_eff < BAYES_BURN_IN_NEFF   # driver still gathering evidence
 
     clusters = count_clusters(signals, direction, bayes)
 
@@ -174,7 +177,7 @@ def evaluate_entry(driver_signal, signals: dict, bayes: BayesianState,
     min_confirmed = EVENT_MIN_CLUSTERS if is_event_day else 2
 
     def _reject(reason: str, cf: bool = False) -> GateResult:
-        return GateResult(False, reason, 0.0, ev, driver_p, driver_mu, 0.0, 0.0, clusters, cf)
+        return GateResult(False, reason, 0.0, ev, driver_p, driver_mu, 0.0, 0.0, clusters, cf, burn_in)
 
     # Breakout-driver trend-opposition rule — hard reject regardless of other gates (§2g)
     driver_cluster = _S2C.get(driver_signal.strategy)
@@ -199,19 +202,27 @@ def evaluate_entry(driver_signal, signals: dict, bayes: BayesianState,
         cf_contra = weighted_contra <= 1.0
         return _reject("equal-opposition", cf=cf_contra)
 
-    # Gate 3 — driver confidence (shrunk P(win)) soft ramp
+    # Gate 3 — driver confidence (shrunk P(win)) soft ramp.
+    # Burn-in relaxes the hard reject: an unproven driver explores at token size.
     driver_mult = _ramp(driver_p, DRIVER_MU_LOW, DRIVER_MU_HIGH)
-    if driver_p < DRIVER_MU_LOW:
+    if not burn_in and driver_p < DRIVER_MU_LOW:
         return _reject("weak-driver")
 
-    # Gate 4 — EV soft ramp (shrunk P(win))
+    # Gate 4 — EV soft ramp. Burn-in floor is EV>0 (never explore a losing bet);
+    # once proven, the full 0.15 floor applies.
     ev_mult = _ramp(ev, ev_floor, EV_GATE_HIGH)
-    if ev < ev_floor:
+    if burn_in:
+        if ev <= 0:
+            return _reject("negative-EV")
+    elif ev < ev_floor:
         return _reject("low-EV")
 
     gate_mult = ev_mult * driver_mult
-    if gate_mult <= 0:
+    if not burn_in and gate_mult <= 0:
         return _reject("zero-gate-mult")
 
+    # During burn-in the sizer ignores gate_mult and uses a fixed token risk; expose 1.0.
+    if burn_in:
+        gate_mult = 1.0
     return GateResult(True, "ok", round(gate_mult, 4), ev, driver_p, driver_mu,
-                      round(ev_mult, 4), round(driver_mult, 4), clusters, cf_contra)
+                      round(ev_mult, 4), round(driver_mult, 4), clusters, cf_contra, burn_in)

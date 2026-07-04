@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from config.settings import (
     CAPITAL, KELLY_FRACTION, MAX_RISK_PER_TRADE, MAX_DAILY_RISK,
     MAX_STOCK_NOTIONAL, MIS_LEVERAGE, SEBI_MARGIN_FLOOR, LIQUIDITY_ADV_CAP,
-    ROUND_RISK_TOLERANCE,
+    ROUND_RISK_TOLERANCE, BURN_IN_RISK_FRACTION,
 )
 
 log = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ def size_trade(
     existing_margin_used: float = 0.0,         # margin already committed by open positions
     margin_rate: float | None = None,          # max(VaR+ELM, 20%); default SEBI floor
     exec_mult: float = 1.0, context_mult: float = 1.0,   # Phase 2 terms (1.0 in Phase 1)
+    burn_in: bool = False,                               # unproven driver -> fixed token risk
 ) -> SizeResult:
     if entry <= 0 or stop <= 0 or entry == stop:
         return SizeResult(False, "bad-levels", 0, 0, 0, 0, 0, 0, [])
@@ -61,8 +62,12 @@ def size_trade(
     stop_pct = abs(entry - stop) / entry
     kelly = max(0.0, ev / rr) if rr > 0 else 0.0
 
-    risk_fraction = KELLY_FRACTION * kelly * posterior_scale * gate_mult * exec_mult * context_mult
-    risk_fraction = min(risk_fraction, MAX_RISK_PER_TRADE)          # 0.5%/trade cap
+    if burn_in:
+        # exploration size: bypass the Kelly x posterior_scale product (≈0 at cold start)
+        risk_fraction = min(BURN_IN_RISK_FRACTION, MAX_RISK_PER_TRADE)
+    else:
+        risk_fraction = KELLY_FRACTION * kelly * posterior_scale * gate_mult * exec_mult * context_mult
+        risk_fraction = min(risk_fraction, MAX_RISK_PER_TRADE)      # 0.5%/trade cap
     intended_risk = capital * risk_fraction
     if intended_risk <= 0:
         return SizeResult(False, "zero-risk", 0, 0, 0, 0, risk_fraction, kelly, [])
