@@ -95,6 +95,24 @@ def bayesian_short_score(signals: dict, bayes) -> float:
     return _bayesian_score(signals, bayes, -1)
 
 
+def bayesian_score_with_stock_type(signals: dict, bayes, direction: int,
+                                   symbol: str, stock_type) -> float:
+    """
+    B3b composite score with the per-stock behavior modifier (plan_phase2.md §2).
+    Σ max(0, mu-0.50) × stock_type.get_modifier(symbol, cluster). INFORMATIONAL ONLY —
+    decision-inert, exactly like the plain composite score.
+    """
+    from backtester.bayesian_gate import cluster_of
+    score = 0.0
+    for name, sig in signals.items():
+        if sig is None or sig.direction != direction:
+            continue
+        mu = bayes.get_posterior(name, direction).mu
+        mod = stock_type.get_modifier(symbol, cluster_of(name)) if stock_type else 1.0
+        score += max(0.0, mu - 0.50) * mod
+    return round(score, 4)
+
+
 def count_agreeing(signals: dict[str, Signal], direction: int) -> int:
     """Count how many strategies agree on a direction."""
     return sum(1 for s in signals.values() if s.direction == direction)
