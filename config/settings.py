@@ -341,3 +341,7 @@ CONTEXT_MULT_OPPOSED = 0.7
 SIGNAL_LABEL_ATR_MULT = 0.5    # signal-outcome label: 0.5 ATR move within
 SIGNAL_LABEL_BARS     = 12     #   12 bars (1 hour)
 EARNINGS_CALENDAR_FILE = BASE_DIR / "config" / "earnings_calendar.json"
+
+# ── B4c. Meta-strategy external data (optional; graceful fallback) ────────────
+PCR_HISTORY_FILE  = BASE_DIR / "config" / "pcr_history.json"    # {date: pcr} or {date:{sym:pcr}}
+BLOCK_DEAL_FILE   = BASE_DIR / "config" / "block_deals.json"    # {date: {sym: net_sign}}
