@@ -8,6 +8,8 @@ Crash safety: open trade state is also saved to checkpoints/live_open_trade.json
 so the agent can resume monitoring after a restart.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from datetime import date

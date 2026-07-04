@@ -8,6 +8,8 @@ above-average volume. Trapped longs become forced sellers.
 Logic: identify a resistance level from history; wait for price to spike
 above it then close below it with volume confirmation.
 """
+
+from __future__ import annotations
 import numpy as np
 import pandas as pd
 from strategies.base import BaseStrategy, Signal

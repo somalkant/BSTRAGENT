@@ -12,6 +12,8 @@ Live candles (intraday):
   - today_df is passed to strategies as today_5min
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import date, datetime, time as dtime
 

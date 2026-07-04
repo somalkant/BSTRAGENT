@@ -23,6 +23,8 @@ Resumes automatically from last checkpoint.
 Paper trades saved to data/trade_logs/paper_trades.csv
 """
 
+from __future__ import annotations
+
 import logging
 import sys
 from pathlib import Path

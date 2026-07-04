@@ -3,6 +3,8 @@ Reusable Plotly figure builders.
 All functions return a go.Figure — callers render with st.plotly_chart(fig, use_container_width=True).
 """
 
+from __future__ import annotations
+
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px

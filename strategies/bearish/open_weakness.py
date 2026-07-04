@@ -11,6 +11,8 @@ Target: 1.5× stop distance below entry.
 Logic: stocks that cannot hold the prior day's low on a weak open have
 sustained institutional selling from pre-market, not just retail panic.
 """
+
+from __future__ import annotations
 import pandas as pd
 from strategies.base import BaseStrategy, Signal
 

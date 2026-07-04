@@ -10,6 +10,8 @@ This uses Kite's `volume` field (total traded volume today), which is monotonica
 increasing. Subtracting the snapshot at bar-open gives the correct per-bar volume.
 """
 
+from __future__ import annotations
+
 import threading
 from datetime import datetime
 
