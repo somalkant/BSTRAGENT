@@ -25,7 +25,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-__all__ = ["rsi", "ema", "bbands", "macd", "stoch", "supertrend", "adx"]
+__all__ = ["rsi", "ema", "bbands", "macd", "stoch", "supertrend", "adx", "atr", "mfi", "psar"]
 
 
 def _rma(series: pd.Series, length: int) -> pd.Series:
@@ -196,3 +196,74 @@ def adx(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 14) -> 
         f"DMP_{length}": plus_di,
         f"DMN_{length}": minus_di,
     }, index=close.index)
+
+
+def atr(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 14) -> pd.Series:
+    high = pd.Series(high, dtype="float64")
+    low = pd.Series(low, dtype="float64")
+    close = pd.Series(close, dtype="float64")
+    out = _atr(high, low, close, length)
+    out.name = f"ATRr_{length}"
+    return out
+
+
+def mfi(high: pd.Series, low: pd.Series, close: pd.Series, volume: pd.Series,
+        length: int = 14) -> pd.Series:
+    high = pd.Series(high, dtype="float64")
+    low = pd.Series(low, dtype="float64")
+    close = pd.Series(close, dtype="float64")
+    volume = pd.Series(volume, dtype="float64")
+    tp = (high + low + close) / 3.0
+    rmf = tp * volume
+    pos = rmf.where(tp > tp.shift(1), 0.0)
+    neg = rmf.where(tp < tp.shift(1), 0.0)
+    pos_sum = pos.rolling(length).sum()
+    neg_sum = neg.rolling(length).sum().replace(0, np.nan)
+    mfr = pos_sum / neg_sum
+    out = 100.0 - (100.0 / (1.0 + mfr))
+    out.name = f"MFI_{length}"
+    return out
+
+
+def psar(high: pd.Series, low: pd.Series, close: pd.Series = None,
+         af0: float = 0.02, af: float = 0.02, max_af: float = 0.2) -> pd.DataFrame | None:
+    high = pd.Series(high, dtype="float64").reset_index(drop=True)
+    low = pd.Series(low, dtype="float64").reset_index(drop=True)
+    m = len(high)
+    if m < 2:
+        return None
+    long_ = [np.nan] * m
+    short_ = [np.nan] * m
+    reversal = [0] * m
+
+    up = True                       # start assuming uptrend
+    acc = af0
+    ep = high[0]                    # extreme point
+    sar = low[0]
+    for i in range(1, m):
+        prev_sar = sar
+        sar = prev_sar + acc * (ep - prev_sar)
+        if up:
+            sar = min(sar, low[i - 1], low[max(0, i - 2)])
+            if low[i] < sar:                        # flip to downtrend
+                up = False; sar = ep; ep = low[i]; acc = af0
+                short_[i] = sar; reversal[i] = 1
+            else:
+                if high[i] > ep:
+                    ep = high[i]; acc = min(acc + af, max_af)
+                long_[i] = sar
+        else:
+            sar = max(sar, high[i - 1], high[max(0, i - 2)])
+            if high[i] > sar:                       # flip to uptrend
+                up = True; sar = ep; ep = high[i]; acc = af0
+                long_[i] = sar; reversal[i] = 1
+            else:
+                if low[i] < ep:
+                    ep = low[i]; acc = min(acc + af, max_af)
+                short_[i] = sar
+    s = f"{af0}_{max_af}"
+    return pd.DataFrame({
+        f"PSARl_{s}": long_,
+        f"PSARs_{s}": short_,
+        f"PSARr_{s}": reversal,
+    })
