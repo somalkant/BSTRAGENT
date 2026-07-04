@@ -7,9 +7,14 @@
 ## CONTEXT: WHAT PHASE 1 DELIVERED
 
 After Phase 1, the system has:
-- Beta posteriors per strategy × direction (32 strategies)
-- Four-gate entry filter: clusters ≥ 2, contradicting ≤ 1, driver_mu ≥ 0.55, EV ≥ 0.20
-- Half-Kelly position sizing
+- Beta posteriors per strategy × direction (32 strategies), driver-only updates
+- Four-gate entry filter: eff_weighted ≥ 1.5 AND eff_binary ≥ 1.5 (confidence-weighted,
+  dependency-penalised clusters), contradicting ≤ 1, driver_mu soft ramp 0.52→0.58,
+  EV soft ramp 0.15→0.25 on shrunk P(win)
+- 0.10-Kelly position sizing with hard caps (0.5%/trade, 0.8%/day, 100%-of-cash
+  notional, margin check, 1%-of-ADV liquidity cap)
+- Execution realism: next-bar-open + slippage fills; point-in-time universes
+  (Nifty 500, F&O, ASM/GSM, sectors); per-trade excursion record (MFE/MAE/exit_reason)
 - Regime field exists in the engine but is always "global" — one flat posterior per strategy
 
 Phase 2 adds seven layers on top:
@@ -103,6 +108,15 @@ def classify_regime(vix, adx, nifty_pct, date):
 
 R4 (CRASH) is exempt — a single day with Nifty < −2% triggers R4 immediately.
 Buffer applies to R1/R2/R3 transitions only.
+
+**R4 intraday, with positions open (previously unstated, now a decision):** Nifty can
+cross −2% mid-session. From the bar the threshold is crossed, R4 is active — all NEW
+entries are blocked immediately (no hysteresis, same as the daily rule). Open positions
+are NOT force-flattened: the broker-held stop remains the exit, and the Phase 3 B5 loss
+halt owns the account-level response. Rationale: panic-flattening into a crash
+systematically sells the low; stop discipline plus the halt already bound the loss, and
+both are validated in the 2020 COVID replay. Stated here so it is never re-litigated
+mid-crash.
 
 Signal log when pending:
 ```
@@ -222,6 +236,14 @@ stock_type=neutral(0.49) → n_eff < 15, flat 50/50 modifier
 stock_type=revert(0.28)  → reversion cluster scores boosted for this stock
 ```
 
+**Decision-inert in v1 — deliberate, stated the way mq is stated.** The stock-type
+prior modifies only the composite score, which is informational (Phase 1 §2h) — no
+gate, no EV, no ranking, and no sizing path reads it. It is a log-first learner: ten
+years of stock-personality evidence accumulate through the walk-forward and become a
+Phase 4b meta-learner feature with full history. Promoting it to a decision input
+(modifying cluster votes or EV) is an annual-cycle change, counted in the DSR trials
+like every other promotion.
+
 ---
 
 ## 3. HIERARCHICAL CLUSTER PRIORS — STRATEGIES SHARE STRENGTH WITHIN A FAMILY
@@ -292,6 +314,11 @@ On each settled trade:
 
 Effect: a real edge-death shows up in position size within ~10 trades instead of
 ~6 months. A false alarm costs a temporary size reduction, then evidence rebuilds.
+
+This immediate size response is the **defensive-overlay exception** to the
+walk-forward freeze rule (Phase 3 §1a): tempering acts on decisions within the current
+test year AND live — reduction only, never an increase. Without the exception, this
+entire mechanism would be inert until the next annual freeze.
 
 Fallback implementation note: if full BOCPD proves heavy, a CUSUM detector on the score
 stream with the same tempering action is an acceptable v1 — the tempering response is
@@ -599,6 +626,8 @@ are unchanged — levels do not become new hard gates.
   live paper, and logged `[CF_EXEC component=... realized_R=...]`. Components are
   promoted (multiplier → veto) or demoted (sizing-active → log-only) at annual WF
   cycles only, based on the realized R of the sets they cut — never mid-window.
+  Counterfactual outcomes evaluate the GATES, never the strategies: a simulated fill
+  is not real evidence and never touches a posterior.
 
 **Component 1 — Market-Structure Acceptance `ms` (sizing-active v1).**
 The review's #1 priority — and the component with the most hand-set structure in it,
@@ -683,7 +712,9 @@ if exec_mult < 0.25 → skip, log [EXEC_SKIP ms=.. ee=.. cq=..]
    — explicit and attributable, instead of letting a stacked token size die
      silently in the Phase 1 integer-rounding rule
 
-risk_fraction = KELLY_FRACTION × Kelly × posterior_scale × gate_mult × exec_mult
+risk_fraction = KELLY_FRACTION × Kelly × posterior_scale × gate_mult × exec_mult × context_mult
+                (context_mult from B4f, 1.0 otherwise — this is the FULL canonical
+                 sizing chain, mirrored in Phase 1 §2i; nothing else multiplies in)
 ```
 Signal log: `exec: ms=1.00 ee=0.82 cq=0.71 (mq=0.90 log) → 0.58`
 `[LOT_ROUND_SKIP]` events whose intended risk was reduced by exec_mult are tagged
@@ -750,6 +781,9 @@ SHORT with advancers > 70%  → context_mult = 0.7
 otherwise                     context_mult = 1.0
 Constants frozen per WF window; sensitivity-tested in Phase 3.
 ```
+context_mult is the final term of the canonical sizing chain (B4e combination line,
+mirrored in Phase 1 §2i). It is logged under L4 — its input (breadth) is an L1 fact,
+but it acts at sizing, and the log taxonomy records where things act.
 
 **Pre-registered promotion rules (annual WF cycle only):**
 - **Time-bucket posteriors** (the review's Gap 10 as literally proposed): enabled only
@@ -762,6 +796,24 @@ Constants frozen per WF window; sensitivity-tested in Phase 3.
   all-day strategies would ever use it.
 - **day_type / sector_rs / daily_trend**: log-only until Phase 4b consumes them.
   No hand-set multipliers will be attached to them.
+
+**Signal-level outcome label (pre-registered now, consumed later):**
+```
+For every signal that reaches engine evaluation (not every raw firing across 500
+stocks):
+  label = 1    direction-consistent move ≥ 0.5 × ATR(14, 5m) within 12 bars (1 hour)
+  label = 0    opposite move ≥ 0.5 × ATR first
+  label = 0.5  neither within 12 bars
+The definition constants are pre-registered here and never tuned.
+```
+Logged from the B6 replay onward (computable for all of 2016–2026), written only
+after the window resolves, read by no decision path. This label is the only route to
+ever LEARNING confidence weights for clusters E and F — fixed at c = 1.0 in Phase 1
+§2g because driver-only updates pin their posteriors at prior. Signal-level labels
+are per-signal facts, not recycled trade PnL, so they carry none of the
+pseudo-replication problem that rules out co-firing posterior updates. Any
+consumption (learned c for E/F, a meta-learner feature) is an annual-cycle promotion
+counted in the DSR trials.
 
 **Deferred outright:** global-indices feed (new data source; overnight information is
 already mostly captured by the gap % tag), delivery % (EOD-published — lookahead if
@@ -808,3 +860,5 @@ All must pass before starting Phase 3:
 | B4f tags | All five tags present on 100% of entered trades and gated signals |
 | B4f breadth | Computed against point-in-time Nifty 500 membership, not today's list |
 | B4f sizing isolation | context_mult ∈ {0.7, 1.0} is the only context sizing effect; day_type/sector_rs/daily_trend provably log-only |
+| B4f signal labels | Signal-level outcome label present for 100% of engine-evaluated signals; written post-resolution; read by no decision path |
+| B3b decision-inert | stock_type modifier provably touches only the composite score — no gate, EV, ranking, or sizing path reads it |

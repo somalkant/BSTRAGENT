@@ -8,15 +8,15 @@
 
 After Phase 1 + 2, the system has:
 - Beta posteriors per strategy × direction × regime (48 strategies, 5 regime buckets)
-- Four-gate entry filter: effective_clusters ≥ 1.5 (dependency-penalised),
-  contradicting ≤ 1, driver_mu soft ramp 0.52→0.58, EV soft ramp 0.15→0.25
-  (on shrunk P(win))
+- Four-gate entry filter: eff_weighted ≥ 1.5 AND eff_binary ≥ 1.5 (confidence-weighted,
+  dependency-penalised), contradicting ≤ 1, driver_mu soft ramp 0.52→0.58,
+  EV soft ramp 0.15→0.25 (on shrunk P(win))
 - Hierarchical cluster priors (strategies share strength within a family)
 - Bayesian change-point detection with posterior tempering on alarm
 - Regime detection with hysteresis buffer and boundary blending
 - Per-stock behavior prior (trend vs reversion modifier per stock)
-- 0.10-Kelly position sizing with portfolio caps (0.5%/trade, 0.8%/day, 5% stock,
-  20% sector, 1%-of-ADV liquidity cap)
+- 0.10-Kelly position sizing with portfolio caps (0.5%/trade, 0.8%/day, 100%-of-cash
+  stock notional, margin check, sector separation, 1%-of-ADV liquidity cap)
 - Realistic fills: next-bar open + slippage model (baseline; full simulator in B5b)
 - Execution quality layer (B4e): structure-acceptance, entry-efficiency, and
   candle-quality size modifiers (momentum quality log-only); single chase hard veto;
@@ -54,6 +54,18 @@ OOS starts 2019. 7+ years of out-of-sample data vs current system's 3 years (202
 **Key rule:** decisions in each test year are made using only the frozen weights from the
 preceding freeze. The posterior continues to update from test outcomes so the next freeze
 captures real evidence, but those updates do not affect decisions in the current test year.
+
+**Defensive-overlay exception (the only exception to the freeze):** the change-point
+tempering (Phase 2 B3d) and the loss-threshold halts (B5) DO act within the test year —
+they may reduce position size or halt new entries, never increase size and never admit
+a trade the frozen weights would reject. Their governing constants (hazard prior,
+CHANGEPOINT_ALARM, halt thresholds) are frozen like every other parameter, and the
+identical mechanism runs live. Without this exception, B3d's "size drops within 5
+trades of alarm" would be impossible and a live edge-death response would be deferred
+to the next annual freeze. Reduction-only bounds the leakage: reacting to test-year
+data can only make the backtest MORE conservative in exposure, never mine test data
+for extra edge. (B4e counterfactual promotions and §2g contradiction-rule changes
+remain annual-cycle only — they are not defensive and get no exception.)
 
 **New strategies in the WF run:** all 16 new strategies start at Beta(3,3) in 2016 and
 accumulate evidence during training years like existing strategies. By the WF-1 freeze
@@ -127,6 +139,18 @@ Existing performance gates unchanged. Additional Bayesian gates:
     evidence; it is REVIEWED monthly and ACTED ON only at annual WF cycles
   - **Tag breakdowns** — monthly performance by time bucket, day type, and breadth
     band (log-only dimensions from B4f; no thresholds attached to them)
+  - **Loss-decomposition & win-capture report** — monthly, from the B2 excursion
+    record: losing trades classified never-worked (straight to stop) / gave-back
+    (MFE > 1R before the stop) / truncated (EOD with positive MFE), per strategy ×
+    regime — the aggregate "which lens failed" answer. Winners report the capture
+    ratio (realized_R / MFE_R) and median winner MFE vs target (are frozen targets
+    leaving money?). Report-only; this is the evidence base for the §2c future exit
+    project, acted on at annual cycles only
+  - **Config integrity** — settings.py is hashed at session start and stamped on
+    every trade record (settings_hash, B2); any mid-window hash change raises a
+    `[CONFIG_DRIFT]` flag in this report. `config/settings_manifest.md` inventories
+    every frozen constant on one page and doubles as the sensitivity-sweep
+    checklist — freeze discipline as an audit trail, not a promise
 - Hooked into `generate_report.py` — runs automatically after each test year completes
   (drift alarm and importance report run monthly within the year)
 - New section in `memory/strategy_agent.md`: "Bayesian Calibration per WF Window"
@@ -266,8 +290,10 @@ is fragile and does not go live.
 
 **Exec-layer sensitivity (runs alongside S1–S7):** every B4e/B4f scalar constant
 (acceptance offset, block_frac anchors, extension ramps, wick ratio, breadth 30/70,
-EXEC_SKIP floor) is perturbed ±25% — full-period Sharpe must not change sign under
-any single perturbation. Set-valued choices (the level menu, the component
+EXEC_SKIP floor) AND the defensive-overlay constants (CHANGEPOINT_ALARM, the BOCPD
+hazard prior, both loss-halt thresholds — decision-relevant frozen constants like any
+other) is perturbed ±25% — full-period Sharpe must not change sign under any single
+perturbation. Set-valued choices (the level menu, the component
 applicability map) are pre-registered in B4e and are NOT swept — changing them is a
 spec change that restarts the WF cycle.
 
@@ -345,9 +371,11 @@ problem. One good-looking WF equity curve is not proof of edge.
    same universe of tried rules.
 
 4. Configuration accounting: the DSR trials count includes the exec-quality layer's
-   constants (B4e) and every log-only → sizing-active promotion — an aggressively
-   filtered execution layer is "configurations tried" even when each filter looks
-   principled, and undercounting them makes the deflation too kind.
+   constants (B4e), the defensive-overlay constants (CHANGEPOINT_ALARM, hazard prior,
+   halt thresholds), and every promotion of any kind — exec components, signal-label
+   consumption, stock-type prior, timing posteriors. An aggressively filtered
+   execution layer is "configurations tried" even when each filter looks principled,
+   and undercounting them makes the deflation too kind.
 ```
 
 **B7b — Monte Carlo robustness (`reports/montecarlo.py`):**
@@ -643,3 +671,5 @@ All must pass before the system is used for live paper trading:
 | Exec sensitivity | ±25% perturbation of every B4e/B4f scalar constant: no full-period Sharpe sign flip |
 | DSR accounting | Trials count demonstrably includes exec-layer constants and any log-only → active promotions |
 | Exec-quality of entered trades | Average exec_mult of entered trades > 0.7 across the OOS period (the layer discounts marginal entries; it must not be degrading the typical one) |
+| Loss decomposition | Monthly report generated from the excursion record; never-worked / gave-back / truncated classes populated per strategy × regime; capture ratio and winner-MFE-vs-target reported |
+| Config integrity | settings_hash present on 100% of trades; a synthetic mid-window settings.py change raises `[CONFIG_DRIFT]`; `settings_manifest.md` exists and matches the sweep list |

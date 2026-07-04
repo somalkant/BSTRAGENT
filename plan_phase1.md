@@ -132,6 +132,25 @@ votes at fixed weight (Section 2g), and their actual predictive value is measure
 by the Phase 3 strategy importance report and consumed by the Phase 4b meta-learner
 — not by a posterior that can never learn.
 
+**Exit policy is part of the frozen spec (previously implicit, now binding):**
+
+Exits are inherited unchanged from the current system: target touch, stop hit, 15:10
+EOD square-off — no trailing stops, no partial exits, no discretionary closes. Because
+the evidence score above is computed from exit outcomes, every posterior learns
+strategy quality and exit policy JOINTLY. Consequence: any change to exit logic
+(trailing stop, different square-off time, partial profit-taking) silently invalidates
+all accumulated evidence — the posteriors would describe a system that no longer
+exists. Exit-policy changes are therefore spec changes, not settings tweaks: they
+require a full B6 walk-forward re-run under the new policy before live use, exactly
+like a change to the B4e level menu. Improving exits is a legitimate future project —
+but it is a project with its own WF cycle, never a tweak.
+
+The same joint learning applies to execution reality: a circuit trap or slippage
+overrun updates the driver's posterior as strategy evidence (winsorized at −1.5R) —
+prevention lives in the universe and liquidity filters, and the winsorization bounds
+the distortion. The per-trade excursion record (B2) is collected from day one
+precisely so the future exit project starts with a decade of evidence instead of zero.
+
 ### 2d. Alpha Decay — Edges Change Over Time
 
 Without decay, a 2016 trade has equal weight to a 2026 trade.
@@ -455,8 +474,16 @@ gate_mult       = ev_mult × driver_mult                 (soft-gate ramps, Secti
 
 risk_fraction   = KELLY_FRACTION × Kelly × posterior_scale × gate_mult
 risk_amount     = capital × min(risk_fraction, MAX_RISK_PER_TRADE)
-position_size   = min(MAX_POSITION_SIZE, risk_amount / stop_pct)
+position_size   = min(MAX_STOCK_NOTIONAL, risk_amount / stop_pct)   # notional cap defined below
 ```
+
+**The chain grows in Phase 2 — this stays the single canonical definition:** B4e
+appends `exec_mult` (execution quality) and B4f appends `context_mult` (breadth rule),
+giving the full live chain
+`KELLY_FRACTION × Kelly × posterior_scale × gate_mult × exec_mult × context_mult`,
+still capped by MAX_RISK_PER_TRADE and the portfolio limits below. Both new terms are
+1.0 until their build steps ship. No other multiplier enters sizing anywhere in the
+system.
 
 **Portfolio-level constraints (hard caps, checked after per-trade sizing):**
 
@@ -547,7 +574,7 @@ Proven strategies: scales up continuously to the cap — no tier jumps.
 | Cluster independence | effective_clusters via inter-cluster correlation matrix | Distinct clusters still co-fire off one latent move; raw cluster count overstates evidence |
 | Direction per strategy | LONG or SHORT explicitly per fire | EMA-CROSS bearish and bullish tracked with independent posteriors |
 | Position sizing | 0.10 Kelly × posterior_scale × gate_mult, capped at 0.5%/trade | Half-Kelly risks ~22% per trade — untenable under parameter/model/regime uncertainty |
-| Portfolio limits | 0.8% daily risk, 5% stock, 20% sector, ADV liquidity cap | Per-trade sizing alone is not risk management |
+| Portfolio limits | 0.8% daily risk, 100%-of-cash stock notional, margin check, sector separation, 1%-of-ADV cap | Per-trade sizing alone is not risk management |
 | Execution realism | Fill at next-bar open + slippage model | Close-of-signal-candle fills are look-ahead; backtest edge must survive realistic fills |
 | Correlation audit first | Before any code | Correlated pairs inflate composite score; assignments must be data-driven |
 
@@ -557,7 +584,10 @@ Proven strategies: scales up continuously to the cap — no tier jumps.
 
 ### B0 — Correlation Audit (prerequisite, before any code)
 
-1. Load existing trade logs from the current system (all available years).
+1. Load existing trade logs from the current system — **restricted to data ≤ 2018**
+   (the WF-1 training boundary). Correlations and cluster assignments are frozen
+   structural choices; computing them over 2019–2025 data would import future
+   co-behavior into the walk-forward — lookahead by structure rather than by value.
 2. Compute pairwise signal correlation matrix for all 32 existing strategies.
 3. Flag pairs with Pearson r > 0.70 → assign weight cap max_weight = 1.5.
 
@@ -602,6 +632,13 @@ Proven strategies: scales up continuously to the cap — no tier jumps.
 - Known weak strategies (DESC-TRI as driver) show mu < 0.50
 - Strategies with no trade history sit at exactly mu = 0.50
 
+**Seeded state is discarded before the walk-forward run.** Seeding exists only to
+validate the update machinery against known strategy behaviour. Old-system trades
+were generated under different gates, sizing, and exits — as live evidence they would
+contaminate the posterior with outcomes the new system would never have produced.
+The B6 run (Phase 3) starts every posterior clean at Beta(3,3) in 2016, and the live
+posteriors (wf8) descend exclusively from that clean run.
+
 ---
 
 ### B2 — Bayesian Scorer + Cluster Gate + EV Gate + Engine Wiring
@@ -623,7 +660,11 @@ Proven strategies: scales up continuously to the cap — no tier jumps.
      every setup this gate alone rejects that the weighted rule would admit
   3. `driver_mu >= 0.52` soft gate (ramp to 0.58)
   4. `EV >= 0.15` soft gate (ramp to 0.25; shrunk P(win))
-  5. Rank by EV; take highest-EV LONG + highest-EV SHORT
+  5. Rank by execution-discounted EV = EV × exec_mult × context_mult; take the highest
+     LONG + highest SHORT. Both multipliers are 1.0 until Phase 2 B4e/B4f ship, so
+     Phase 1 ranking is plain EV — pinned now because ranking and sizing must agree:
+     a setup forced to quarter size by execution quality is worth less than a
+     slightly-lower-EV setup taken at full size
   6. Position size via capped fractional Kelly + portfolio limits (Section 2i)
 - Signal log format:
   `clusters=X(B,D) c=(0.8,0.4) eff_w=1.55 eff_bin=1.7 vs=Y(C)  driver_mu=Z  EV=+W  gate_mult=0.84  [CONFIRMED—CLEAN / CONFIRMED—CONTESTED / REJECTED—reason]`
@@ -644,6 +685,26 @@ slippage default = 5 bps + impact term proportional to participation rate
 Exits (target/stop) fill at the touched level ± the same slippage model; if a bar gaps
 through the stop, fill at the bar open, not the stop price. All EV realisation and
 calibration metrics in Phase 3 are computed against these degraded fills.
+
+**Per-trade excursion record (part of B2 — every trade, winners included):**
+
+```
+paper_trades.csv gains: MFE_R, MAE_R   (max favorable / adverse excursion in R,
+                                        measured from 5-min bar extremes — the
+                                        intra-bar path is unknowable; same
+                                        convention in backtest and live paper)
+                        bars_to_exit
+                        exit_reason ∈ {TARGET, STOP, EOD, CIRCUIT_TRAP}
+                        settings_hash  (config integrity stamp — Phase 3 B5)
+```
+
+Purpose — retrospective credit assignment. A loss decomposes into: **never worked**
+(straight to stop → entry thesis wrong — the when/what lens), **gave it back**
+(MFE > 1R before the stop → exit-policy candidate — the when-to-sell lens), or
+**truncated** (EOD exit with positive MFE → time budget). Winners matter equally:
+median winner MFE vs target measures whether the frozen targets leave money on the
+table. This record is the design basis for the future exit project named in §2c —
+log-only, no decision reads it; the monthly decomposition report lives in Phase 3 B5.
 
 **Validation:** Run 2016–2018 training years with new gates.
 Expected: fewer trades than current system, higher average EV per trade entered.
@@ -699,6 +760,15 @@ TODAY'S constituent list backtests only the survivors and winners.
 - Applies to every universe-level computation: candidate scans on both sides, the
   1%-of-ADV liquidity cap, and the Phase 2 B4f breadth tag — breadth computed over
   today's members instead of as-of members would silently inherit the bias
+
+**Point-in-time regulatory flags and sector map (same artifact class, previously
+unlisted):**
+- `config/asm_gsm_history.json` — date-keyed ASM/GSM stage and T2T/BE series flags,
+  reconstructed from NSE's archived surveillance circulars; the LONG-side exclusion
+  rule above must evaluate these as-of the signal date, not against today's list
+- `config/sector_map.json` — date-keyed NSE sector classification (stocks get
+  reclassified over a 10-year window); consumed by the SECTOR_RULE (§2i) and the
+  Phase 2 B4f sector_rs tag
 
 ---
 
@@ -812,6 +882,27 @@ failed the cluster/EV/driver gates.
 
 ---
 
+### Last-Entry Cutoff (additional time filter, part of B2)
+
+The inherited "time" quality filter is now pinned explicitly. A signal at 09:30 and a
+signal at 14:40 carry identical target/stop geometry, but the 14:40 trade has ~30
+minutes before the 15:10 square-off truncates it — its EV is structurally overstated
+because the geometry assumes time the trade does not have.
+
+```
+LAST_ENTRY_TIME = 14:30   (settings.py; frozen per WF window)
+
+No NEW entries at or after LAST_ENTRY_TIME. Exits are unaffected — stops, targets,
+and the 15:10 square-off run to the close as always.
+```
+
+Late-window performance is measured, not assumed: the Phase 2 B4f time-bucket tag (T3)
+and the Phase 3 B5 per-bucket report quantify how trades entered 13:00–14:30 actually
+realise their EV; if T3 realisation sits materially below T1/T2, tightening the cutoff
+is an annual-cycle change like any other constant.
+
+---
+
 ## 5. PHASE 1 EXIT CRITERIA
 
 All must pass before starting Phase 2:
@@ -840,3 +931,6 @@ All must pass before starting Phase 2:
 | B2 contradiction counterfactual | `[CF_CONTRA]` logged with simulated outcome for every setup rejected only by the contradiction gate that the weighted rule would admit |
 | B2 driver-only update | A settled trade changes exactly one strategy × direction posterior; E/F posteriors provably untouched after a full training year |
 | B2 PIT universe | Zero trades on stocks outside as-of Nifty 500 membership; `nifty500_membership.json` date-keyed from NSE rebalance archives |
+| B2 last entry | Zero entries at/after LAST_ENTRY_TIME in training-year logs; exits still run to the 15:10 square-off |
+| B2 excursion record | MFE_R, MAE_R, bars_to_exit, exit_reason, settings_hash present on 100% of trades — winners included |
+| B2 PIT flags/sectors | ASM/GSM/T2T exclusions and SECTOR_RULE evaluated from date-keyed files, not today's lists |
