@@ -30,10 +30,20 @@ from scipy.stats import beta as beta_dist
 from config.settings import (
     BAYES_ALPHA0, BAYES_BETA0, BAYES_DECAY, WINSOR_MAX_LOSS_R,
     SHRINK_K, PRIOR_PWIN, BAYES_WEIGHT_SCALE, MIN_WEIGHT, MAX_WEIGHT,
-    BAYES_STATE_FILE, REGIME_MIN_NEFF,
+    BAYES_STATE_FILE, REGIME_MIN_NEFF, K_HIER, STRATEGY_CLUSTERS_FILE,
 )
 
 GLOBAL = "global"
+
+
+def _load_strategy_clusters() -> dict:
+    try:
+        return json.loads(STRATEGY_CLUSTERS_FILE.read_text())["strategy_to_cluster"]
+    except Exception:
+        return {}
+
+
+_S2C = _load_strategy_clusters()   # strategy -> cluster letter (for hierarchical pooling)
 
 log = logging.getLogger(__name__)
 
@@ -67,15 +77,26 @@ class Posterior:
     alpha:           float
     beta:            float
     n_eff:           float
-    mu:              float   # posterior mean
+    mu:              float   # raw posterior mean (mu_raw)
     mu_conservative: float   # 25th-percentile credible bound
     ci_width:        float   # 25–75 interquartile width
     posterior_scale: float   # 1 - ci_width/ci_width_at_prior  (0 uncertain, 1 confident)
+    # B3c hierarchical shrinkage (defaults leave Phase-1 behaviour: mu_hier == mu)
+    mu_hier:         float | None = None   # strategy shrunk toward its cluster family
+    mu_cluster:      float | None = None   # pooled cluster mean (None if unmapped/empty)
+    w_hier:          float = 1.0           # n_eff/(n_eff+K_HIER) — own-evidence weight
+
+    @property
+    def mu_effective(self) -> float:
+        return self.mu if self.mu_hier is None else self.mu_hier
 
     def p_win(self, shrink_k: float = SHRINK_K) -> float:
-        """Model-uncertainty-shrunk P(win) (§2f). Always used instead of raw mu."""
+        """
+        Model-uncertainty-shrunk P(win) (§2f), applied to the hierarchically-shrunk
+        mean (B3c order: hierarchical first, then model-uncertainty). Never raw mu.
+        """
         w = self.n_eff / (self.n_eff + shrink_k)
-        return w * self.mu + (1.0 - w) * PRIOR_PWIN
+        return w * self.mu_effective + (1.0 - w) * PRIOR_PWIN
 
     def ev(self, rr: float, shrink_k: float = SHRINK_K) -> float:
         """Bayesian EV on the shrunk P(win): EV = P*(RR+1) - 1 (§2f)."""
@@ -132,6 +153,8 @@ class BayesianState:
         self._state: dict[str, dict[str, _Cell]] = {}
         # Regime buckets — {strategy: {direction: {regime: _Cell}}} (Phase 2 B3)
         self._rstate: dict[str, dict[str, dict[str, _Cell]]] = {}
+        # Pooled cluster posterior — {(cluster, direction): _Cell} (Phase 2 B3c)
+        self._pool: dict[tuple, _Cell] = {}
 
     # ── internal ──────────────────────────────────────────────────────────────
     def _cell(self, strategy: str, direction, regime: str = GLOBAL) -> _Cell:
@@ -190,6 +213,14 @@ class BayesianState:
         if regime and regime != GLOBAL:
             self._apply(self._cell(strategy, direction, regime), score, self.decay)
 
+        # B3c — pooled cluster posterior (decayed sum of member evidence)
+        cluster = _S2C.get(strategy)
+        if cluster is not None:
+            key = (cluster, _dir_key(direction))
+            if key not in self._pool:
+                self._pool[key] = _Cell(self.alpha0, self.beta0, 0.0)
+            self._apply(self._pool[key], score, self.decay)
+
         if winsorized:
             used_r = max(WINSOR_MAX_LOSS_R, min(rr, raw))
             log.info(f"[OUTLIER_WINSORIZED raw={raw:+.1f}R used={used_r:+.2f}R "
@@ -218,16 +249,37 @@ class BayesianState:
             posterior_scale=posterior_scale,
         )
 
+    def _cluster_mu(self, strategy: str, direction) -> float | None:
+        cluster = _S2C.get(strategy)
+        if cluster is None:
+            return None
+        pool = self._pool.get((cluster, _dir_key(direction)))
+        if pool is None:
+            return None
+        return pool.alpha / (pool.alpha + pool.beta)
+
     def get_posterior(self, strategy: str, direction, regime: str = GLOBAL) -> Posterior:
         """
-        Regime-conditional posterior with fallback: use the regime bucket only when
-        its n_eff >= REGIME_MIN_NEFF, else the global posterior (B3).
+        Regime-conditional posterior with fallback (B3) + hierarchical cluster
+        shrinkage (B3c). Regime bucket used only when n_eff >= REGIME_MIN_NEFF, else
+        global. Then mu_hier = w*mu_raw + (1-w)*mu_cluster, w = n_eff/(n_eff+K_HIER).
         """
+        cell = self._cell(strategy, direction, GLOBAL)
         if regime and regime != GLOBAL:
             rcell = self._cell(strategy, direction, regime)
             if rcell.n_eff >= REGIME_MIN_NEFF:
-                return self._posterior_from_cell(strategy, direction, rcell)
-        return self._posterior_from_cell(strategy, direction, self._cell(strategy, direction, GLOBAL))
+                cell = rcell
+        post = self._posterior_from_cell(strategy, direction, cell)
+
+        mu_cluster = self._cluster_mu(strategy, direction)
+        if mu_cluster is not None:
+            w = cell.n_eff / (cell.n_eff + K_HIER)
+            post.w_hier = w
+            post.mu_cluster = mu_cluster
+            post.mu_hier = w * post.mu + (1.0 - w) * mu_cluster
+        else:
+            post.mu_hier = post.mu           # unmapped / empty cluster -> no shrinkage
+        return post
 
     def get_posterior_blended(self, strategy: str, direction, vix: float, adx: float,
                               active_regime: str, vix_band_lo: float, vix_band_hi: float,
@@ -267,7 +319,8 @@ class BayesianState:
     # ── persistence ───────────────────────────────────────────────────────────
     def to_dict(self) -> dict:
         """Schema: {strategy: {direction: {"global": cell, "R1": cell, ...}}}."""
-        out: dict = {"_meta": {"alpha0": self.alpha0, "beta0": self.beta0, "decay": self.decay}}
+        out: dict = {"_meta": {"alpha0": self.alpha0, "beta0": self.beta0, "decay": self.decay},
+                     "_pool": {f"{cl}|{d}": asdict(c) for (cl, d), c in sorted(self._pool.items())}}
         strategies = sorted(set(self._state) | set(self._rstate))
         for strat in strategies:
             dirs = {}
@@ -300,6 +353,9 @@ class BayesianState:
         obj.alpha0 = float(meta.get("alpha0", BAYES_ALPHA0))
         obj.beta0  = float(meta.get("beta0", BAYES_BETA0))
         obj.decay  = float(meta.get("decay", BAYES_DECAY))
+        for key, c in data.get("_pool", {}).items():
+            cl, d = key.split("|")
+            obj._pool[(cl, d)] = _Cell(float(c["alpha"]), float(c["beta"]), float(c["n_eff"]))
         for strat, dirs in data.items():
             if strat.startswith("_"):
                 continue
