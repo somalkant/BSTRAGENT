@@ -181,3 +181,98 @@ NIFTY_BULLISH_THRESHOLD    = 1.5   # % change threshold (positive)
 NIFTY_BEARISH_THRESHOLD    = -1.5  # % change threshold (negative)
 
 WF_WEIGHTS_DIR = CHECKPOINT_DIR   # where frozen WF weight snapshots are stored
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 1 — BAYESIAN CORE  (plan_phase1.md)
+# All constants below replace the fixed-weight system. They are frozen per
+# Walk-Forward window and sensitivity-tested in Phase 3. Nothing here is tuned
+# mid-run.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── 2b. Prior ────────────────────────────────────────────────────────────────
+BAYES_ALPHA0 = 3.0            # Beta(3,3): posterior mean 0.50 at prior, data
+BAYES_BETA0  = 3.0            # dominates after ~60 real outcomes
+
+# ── 2c. Update rule (PnL-normalised, winsorized) ─────────────────────────────
+BAYES_DECAY       = 0.999     # applied to alpha, beta, n_eff on every update
+WINSOR_MAX_LOSS_R = -1.5      # normalised_pnl floor before scoring (max 1.5R loss)
+# upper winsor bound is the trade's own RR (target), applied per-update
+
+# ── 2d. n_eff (effective sample size) ────────────────────────────────────────
+# decayed observation count: n_eff = n_eff*DECAY + 1 per update (starts 0.0)
+
+# ── 2e. Bayesian weight (informational composite only, §2h) ──────────────────
+# weight = clip((mu_conservative - 0.40) * WEIGHT_SCALE, MIN_WEIGHT, MAX_WEIGHT)
+# Anchors: mu_cons 0.50 -> 1.0, 0.40 -> floor. (Plan's 0.65->3.0 anchor is
+# approximate under a single linear scale; this term is informational only —
+# the decision path uses EV, eff-clusters and Kelly, not this weight.)
+BAYES_WEIGHT_SCALE = 10.0
+# MIN_WEIGHT (0.1) and MAX_WEIGHT (3.0) reuse the values defined above.
+
+# ── 2f. Model-uncertainty shrinkage ──────────────────────────────────────────
+SHRINK_K   = 30.0            # P(win) = w*mu + (1-w)*0.5, w = n_eff/(n_eff+K)
+PRIOR_PWIN = 0.50            # neutral prior P(win) shrinkage target
+
+# ── 2f/2g. Soft entry gates (ramps, not cliffs) ──────────────────────────────
+EV_GATE_LOW   = 0.15         # EV < 0.15 -> reject; ev_mult ramps 0->1 over
+EV_GATE_HIGH  = 0.25         #   [0.15, 0.25]
+DRIVER_MU_LOW  = 0.52        # driver_mu < 0.52 -> reject; driver_mult ramps
+DRIVER_MU_HIGH = 0.58        #   0->1 over [0.52, 0.58]
+
+# ── 2g. Cluster confirmation gate ────────────────────────────────────────────
+EFF_CLUSTER_MIN     = 1.5    # require eff_weighted >= 1.5 AND eff_binary >= 1.5
+MAX_CONTRADICTING   = 1      # raw contradicting clusters allowed (weighted rule
+                             #   logged as [CF_CONTRA] only in v1)
+VOTE_C_FLOOR        = 0.3    # confidence-weight floor per confirming cluster
+VOTE_C_SCALE        = 0.15   # c_i = clip((P_best-0.50)/SCALE, FLOOR, 1.0)
+CONTEXT_META_CLUSTERS = ("E", "F")  # clusters whose vote c_i is fixed at 1.0
+
+# ── 2i. Position sizing — capped fractional Kelly ────────────────────────────
+KELLY_FRACTION      = 0.10       # never above 0.15
+MAX_RISK_PER_TRADE  = 0.005      # 0.5% of capital (fraction)
+MAX_DAILY_RISK      = 0.008      # 0.8% of capital summed across the day
+MIS_LEVERAGE        = 5.0        # intraday buying power = cash x leverage
+MAX_STOCK_NOTIONAL  = 1.0        # 100% of cash per position (= 20% of 5x BP)
+SEBI_MARGIN_FLOOR   = 0.20       # peak-margin floor: margin_rate = max(VaR+ELM, 20%)
+LIQUIDITY_ADV_CAP   = 0.01       # position notional <= 1% of 20-day avg turnover
+ROUND_RISK_TOLERANCE = 0.25      # skip if |actual-intended risk|/intended > 25%
+
+# ── 2i. Locked-stack loss halts (Phase 3 B5 owns approval; anchors pinned here)
+DAILY_HALT_MULT   = 1.2          # daily halt = 1.2x MAX_DAILY_RISK by construction
+
+# ── B2. Execution realism (baseline; full simulator in Phase 3 B5b) ──────────
+FILL_MODEL          = "NEXT_BAR_OPEN"   # never signal-candle close (look-ahead)
+SLIPPAGE_BPS        = 5.0        # base slippage each side (bps)
+SLIPPAGE_IMPACT_K   = 1.0        # impact term coefficient x participation rate
+
+# ── B2. Time filters ─────────────────────────────────────────────────────────
+LAST_ENTRY_TIME     = time(14, 30)   # no NEW entries at/after 14:30
+EOD_SQUAREOFF_TIME  = time(15, 10)   # frozen EOD square-off (exits run to close)
+FIRST_CANDLE_TIME   = "09:15"
+FIRST_CANDLE_EXEMPT = {
+    "GAP-CONT", "GAP-FADE", "FIRST-CANDLE",
+    "PDH-PDL", "PWH-PWL", "CPR", "CAMARILLA",
+}
+
+# ── B2. Macro event calendar filter ──────────────────────────────────────────
+MACRO_EVENTS      = ["RBI_MPC", "UNION_BUDGET", "US_FED_DECISION"]
+EVENT_DAY_MODE    = "SKIP"       # "SKIP" or "RAISE_THRESHOLD"
+EVENT_MIN_EV       = 0.35        # RAISE_THRESHOLD mode: EV bar
+EVENT_MIN_CLUSTERS = 3           # RAISE_THRESHOLD mode: confirmed-cluster bar
+
+# ── B0/B2. Config artifacts (point-in-time; date-keyed JSON) ─────────────────
+STRATEGY_CLUSTERS_FILE = BASE_DIR / "config" / "strategy_clusters.json"
+CLUSTER_CORR_FILE      = BASE_DIR / "config" / "cluster_corr.json"
+FNO_MEMBERSHIP_FILE    = BASE_DIR / "config" / "fno_membership.json"
+NIFTY500_MEMBERSHIP_FILE = BASE_DIR / "config" / "nifty500_membership.json"
+ASM_GSM_HISTORY_FILE   = BASE_DIR / "config" / "asm_gsm_history.json"
+SECTOR_MAP_FILE        = BASE_DIR / "config" / "sector_map.json"
+CORPORATE_ACTIONS_FILE = BASE_DIR / "config" / "corporate_actions.json"
+EVENTS_CALENDAR_FILE   = BASE_DIR / "config" / "events_calendar.json"
+
+# ── B1. Bayesian state checkpoint ────────────────────────────────────────────
+BAYES_STATE_FILE = CHECKPOINT_DIR / "strategy_bayes.json"
+
+# Initial training window (before first WF freeze) — data <= 2018 only for B0
+WF1_TRAIN_END_YEAR = 2018
