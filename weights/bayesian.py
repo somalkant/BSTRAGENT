@@ -155,6 +155,8 @@ class BayesianState:
         self._rstate: dict[str, dict[str, dict[str, _Cell]]] = {}
         # Pooled cluster posterior — {(cluster, direction): _Cell} (Phase 2 B3c)
         self._pool: dict[tuple, _Cell] = {}
+        # Change-point monitor (Phase 2 B3d) — attached by attach_changepoint()
+        self._cpm = None
 
     # ── internal ──────────────────────────────────────────────────────────────
     def _cell(self, strategy: str, direction, regime: str = GLOBAL) -> _Cell:
@@ -177,6 +179,17 @@ class BayesianState:
         cell.alpha += score
         cell.beta  += (1.0 - score)
         cell.n_eff += 1.0
+
+    # ── change-point (B3d) ─────────────────────────────────────────────────────
+    def attach_changepoint(self, monitor) -> None:
+        """Attach a ChangePointMonitor; update() will run it and temper on alarm."""
+        self._cpm = monitor
+
+    def _temper(self, cell: _Cell, temper: float) -> None:
+        """Shrink evidence halfway toward the prior (B3d): re-inflate uncertainty."""
+        cell.alpha = self.alpha0 + (cell.alpha - self.alpha0) * temper
+        cell.beta  = self.beta0 + (cell.beta - self.beta0) * temper
+        cell.n_eff = cell.n_eff * temper
 
     # ── scoring ───────────────────────────────────────────────────────────────
     @staticmethod
@@ -221,6 +234,18 @@ class BayesianState:
                 self._pool[key] = _Cell(self.alpha0, self.beta0, 0.0)
             self._apply(self._pool[key], score, self.decay)
 
+        # B3d — change-point detection + tempering (after the update lands)
+        cp_alarm, cp_p = False, 0.0
+        if self._cpm is not None:
+            from config.settings import CHANGEPOINT_TEMPER
+            cp_alarm, cp_p = self._cpm.observe(strategy, direction, score)
+            if cp_alarm:
+                self._temper(gcell, CHANGEPOINT_TEMPER)
+                if regime and regime != GLOBAL:
+                    self._temper(self._cell(strategy, direction, regime), CHANGEPOINT_TEMPER)
+                log.warning(f"[CHANGEPOINT strategy={strategy} dir={_dir_key(direction)} "
+                            f"p={cp_p:.2f}] posterior tempered toward prior")
+
         if winsorized:
             used_r = max(WINSOR_MAX_LOSS_R, min(rr, raw))
             log.info(f"[OUTLIER_WINSORIZED raw={raw:+.1f}R used={used_r:+.2f}R "
@@ -229,7 +254,7 @@ class BayesianState:
         return {
             "strategy": strategy, "direction": _dir_key(direction), "regime": regime,
             "score": round(score, 4), "raw_R": round(raw, 3),
-            "winsorized": winsorized,
+            "winsorized": winsorized, "changepoint": cp_alarm, "p_change": round(cp_p, 3),
             "alpha": round(gcell.alpha, 4), "beta": round(gcell.beta, 4),
             "n_eff": round(gcell.n_eff, 4),
         }
