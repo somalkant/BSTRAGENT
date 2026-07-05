@@ -19,6 +19,8 @@ Filters applied:
   Score: Bull flag          (weight 1.5) — strong pole + consolidation
   Score: PDH proximity      (weight 0.5) — closed within 0.5% of day's high
 """
+
+from __future__ import annotations
 import json
 import logging
 from datetime import date

@@ -1,0 +1,89 @@
+{
+  "_meta": {
+    "status": "PROVISIONAL",
+    "note": "7x7 (A-G) provisional PD matrix extending the Phase 1 5x5 with Meta(F) and Multi-TF(G). F ~independent; G correlates with breakout/trend. Replace with the empirical B0 scan over the 53-strategy library before the WF run.",
+    "clusters": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G"
+    ]
+  },
+  "clusters": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G"
+  ],
+  "matrix": [
+    [
+      1.0,
+      0.1,
+      0.6,
+      0.5,
+      0.3,
+      0.1,
+      0.45
+    ],
+    [
+      0.1,
+      1.0,
+      0.1,
+      0.15,
+      0.2,
+      0.1,
+      0.1
+    ],
+    [
+      0.6,
+      0.1,
+      1.0,
+      0.45,
+      0.3,
+      0.1,
+      0.45
+    ],
+    [
+      0.5,
+      0.15,
+      0.45,
+      1.0,
+      0.3,
+      0.1,
+      0.3
+    ],
+    [
+      0.3,
+      0.2,
+      0.3,
+      0.3,
+      1.0,
+      0.15,
+      0.2
+    ],
+    [
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.15,
+      1.0,
+      0.1
+    ],
+    [
+      0.45,
+      0.1,
+      0.45,
+      0.3,
+      0.2,
+      0.1,
+      1.0
+    ]
+  ]
+}

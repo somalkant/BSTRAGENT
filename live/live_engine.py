@@ -9,6 +9,8 @@ the live system stays byte-for-byte identical to the tested backtester.
 scan_once() returns the best recommendation dict (LONG or SHORT), or None.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import date, datetime
 import pytz

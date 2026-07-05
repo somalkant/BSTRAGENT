@@ -8,6 +8,8 @@ Kite Connect access tokens expire daily. This module handles:
   4. Auto-detecting if today's token is already saved
 """
 
+from __future__ import annotations
+
 import os
 import json
 from datetime import date

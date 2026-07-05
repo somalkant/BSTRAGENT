@@ -181,3 +181,225 @@ NIFTY_BULLISH_THRESHOLD    = 1.5   # % change threshold (positive)
 NIFTY_BEARISH_THRESHOLD    = -1.5  # % change threshold (negative)
 
 WF_WEIGHTS_DIR = CHECKPOINT_DIR   # where frozen WF weight snapshots are stored
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 1 — BAYESIAN CORE  (plan_phase1.md)
+# All constants below replace the fixed-weight system. They are frozen per
+# Walk-Forward window and sensitivity-tested in Phase 3. Nothing here is tuned
+# mid-run.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── 2b. Prior ────────────────────────────────────────────────────────────────
+BAYES_ALPHA0 = 3.0            # Beta(3,3): posterior mean 0.50 at prior, data
+BAYES_BETA0  = 3.0            # dominates after ~60 real outcomes
+
+# ── 2c. Update rule (PnL-normalised, winsorized) ─────────────────────────────
+BAYES_DECAY       = 0.999     # applied to alpha, beta, n_eff on every update
+WINSOR_MAX_LOSS_R = -1.5      # normalised_pnl floor before scoring (max 1.5R loss)
+# upper winsor bound is the trade's own RR (target), applied per-update
+
+# ── 2d. n_eff (effective sample size) ────────────────────────────────────────
+# decayed observation count: n_eff = n_eff*DECAY + 1 per update (starts 0.0)
+
+# ── 2e. Bayesian weight (informational composite only, §2h) ──────────────────
+# weight = clip((mu_conservative - 0.40) * WEIGHT_SCALE, MIN_WEIGHT, MAX_WEIGHT)
+# Anchors: mu_cons 0.50 -> 1.0, 0.40 -> floor. (Plan's 0.65->3.0 anchor is
+# approximate under a single linear scale; this term is informational only —
+# the decision path uses EV, eff-clusters and Kelly, not this weight.)
+BAYES_WEIGHT_SCALE = 10.0
+# MIN_WEIGHT (0.1) and MAX_WEIGHT (3.0) reuse the values defined above.
+
+# ── 2f. Model-uncertainty shrinkage ──────────────────────────────────────────
+SHRINK_K   = 30.0            # P(win) = w*mu + (1-w)*0.5, w = n_eff/(n_eff+K)
+PRIOR_PWIN = 0.50            # neutral prior P(win) shrinkage target
+
+# ── Cold-start burn-in (resolves the clean-start deadlock) ───────────────────
+# A clean Beta(3,3) start has mu=0.50 and posterior_scale=0, so the driver gate
+# (>=0.52) and Kelly sizing (scale 0 -> size 0) both block the first trade -> no
+# trades -> no evidence. The plan's intent ("token size — the posterior still
+# collects evidence"; "new strategies: tiny position until evidence accumulates")
+# is realised here: while a driver has < BAYES_BURN_IN_NEFF effective trades, the
+# evidence gates (driver_mu, EV>=0.15) relax to EV>0 and the trade sizes at a fixed
+# tiny exploration risk. Once evidence accrues the strict gates + real Kelly take over.
+BAYES_BURN_IN_NEFF    = 20
+BURN_IN_RISK_FRACTION = 0.0005    # 0.05% of capital per burn-in exploration trade
+
+# ── 2f/2g. Soft entry gates (ramps, not cliffs) ──────────────────────────────
+EV_GATE_LOW   = 0.15         # EV < 0.15 -> reject; ev_mult ramps 0->1 over
+EV_GATE_HIGH  = 0.25         #   [0.15, 0.25]
+DRIVER_MU_LOW  = 0.52        # driver_mu < 0.52 -> reject; driver_mult ramps
+DRIVER_MU_HIGH = 0.58        #   0->1 over [0.52, 0.58]
+
+# ── 2g. Cluster confirmation gate ────────────────────────────────────────────
+EFF_CLUSTER_MIN     = 1.5    # require eff_weighted >= 1.5 AND eff_binary >= 1.5
+MAX_CONTRADICTING   = 1      # raw contradicting clusters allowed (weighted rule
+                             #   logged as [CF_CONTRA] only in v1)
+CONFIRM_WINDOW_MIN  = 30     # confirmation is CONTEMPORANEOUS: only price-cluster
+                             #   signals within this many minutes of the driver's
+                             #   signal time count. Context/meta (E/F) are all-day.
+VOTE_C_FLOOR        = 0.3    # confidence-weight floor per confirming cluster
+VOTE_C_SCALE        = 0.15   # c_i = clip((P_best-0.50)/SCALE, FLOOR, 1.0)
+CONTEXT_META_CLUSTERS = ("E", "F")  # clusters whose vote c_i is fixed at 1.0
+
+# ── 2i. Position sizing — capped fractional Kelly ────────────────────────────
+KELLY_FRACTION      = 0.10       # never above 0.15
+MAX_RISK_PER_TRADE  = 0.005      # 0.5% of capital (fraction)
+MAX_DAILY_RISK      = 0.008      # 0.8% of capital summed across the day
+MIS_LEVERAGE        = 5.0        # intraday buying power = cash x leverage
+MAX_STOCK_NOTIONAL  = 1.0        # 100% of cash per position (= 20% of 5x BP)
+SEBI_MARGIN_FLOOR   = 0.20       # peak-margin floor: margin_rate = max(VaR+ELM, 20%)
+LIQUIDITY_ADV_CAP   = 0.01       # position notional <= 1% of 20-day avg turnover
+ROUND_RISK_TOLERANCE = 0.25      # skip if |actual-intended risk|/intended > 25%
+
+# ── 2i. Locked-stack loss halts (Phase 3 B5 owns approval; anchors pinned here)
+DAILY_HALT_MULT   = 1.2          # daily halt = 1.2x MAX_DAILY_RISK by construction
+
+# ── B2. Execution realism (baseline; full simulator in Phase 3 B5b) ──────────
+FILL_MODEL          = "NEXT_BAR_OPEN"   # never signal-candle close (look-ahead)
+SLIPPAGE_BPS        = 5.0        # base slippage each side (bps)
+SLIPPAGE_IMPACT_K   = 1.0        # impact term coefficient x participation rate
+
+# ── B2. Time filters ─────────────────────────────────────────────────────────
+LAST_ENTRY_TIME     = time(14, 30)   # no NEW entries at/after 14:30
+EOD_SQUAREOFF_TIME  = time(15, 10)   # frozen EOD square-off (exits run to close)
+FIRST_CANDLE_TIME   = "09:15"
+FIRST_CANDLE_EXEMPT = {
+    "GAP-CONT", "GAP-FADE", "FIRST-CANDLE",
+    "PDH-PDL", "PWH-PWL", "CPR", "CAMARILLA",
+}
+
+# ── B2. Macro event calendar filter ──────────────────────────────────────────
+MACRO_EVENTS      = ["RBI_MPC", "UNION_BUDGET", "US_FED_DECISION"]
+EVENT_DAY_MODE    = "SKIP"       # "SKIP" or "RAISE_THRESHOLD"
+EVENT_MIN_EV       = 0.35        # RAISE_THRESHOLD mode: EV bar
+EVENT_MIN_CLUSTERS = 3           # RAISE_THRESHOLD mode: confirmed-cluster bar
+
+# ── B0/B2. Config artifacts (point-in-time; date-keyed JSON) ─────────────────
+STRATEGY_CLUSTERS_FILE = BASE_DIR / "config" / "strategy_clusters.json"
+CLUSTER_CORR_FILE      = BASE_DIR / "config" / "cluster_corr.json"
+FNO_MEMBERSHIP_FILE    = BASE_DIR / "config" / "fno_membership.json"
+NIFTY500_MEMBERSHIP_FILE = BASE_DIR / "config" / "nifty500_membership.json"
+ASM_GSM_HISTORY_FILE   = BASE_DIR / "config" / "asm_gsm_history.json"
+SECTOR_MAP_FILE        = BASE_DIR / "config" / "sector_map.json"
+CORPORATE_ACTIONS_FILE = BASE_DIR / "config" / "corporate_actions.json"
+EVENTS_CALENDAR_FILE   = BASE_DIR / "config" / "events_calendar.json"
+
+# ── B1. Bayesian state checkpoint ────────────────────────────────────────────
+BAYES_STATE_FILE = CHECKPOINT_DIR / "strategy_bayes.json"
+
+# Initial training window (before first WF freeze) — data <= 2018 only for B0
+WF1_TRAIN_END_YEAR = 2018
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 2 — ENRICHMENT LAYER  (plan_phase2.md)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── B3. Regime-conditional posteriors ────────────────────────────────────────
+REGIME_MIN_NEFF   = 20        # use regime-specific posterior only when n_eff >= 20
+REGIMES           = ("R1", "R2", "R3", "R4")   # R1 HIGH_VIX, R2 TRENDING, R3 SIDEWAYS, R4 CRASH
+DEFAULT_REGIME    = "R3"      # startup default (SIDEWAYS)
+
+# Rolling-percentile VIX threshold (deterministic, lookahead-free: data <= t-1 only)
+VIX_PCTILE_WINDOW = 252       # trailing trading days
+VIX_R1_PCTILE     = 80        # regime threshold = trailing P80 of VIX closes
+VIX_BAND_LO_PCTILE = 75       # blend zone floor
+VIX_BAND_HI_PCTILE = 85       # blend zone ceiling
+ADX_THRESHOLD     = 25.0
+ADX_BAND          = 2.0       # blend zone ADX in [23, 27]; ADX stays absolute
+CRASH_NIFTY_RET   = -2.0      # R4: Nifty day-return < -2%  (absolute)
+HYSTERESIS_DAYS   = 3         # R1/R2/R3 change commits after 3 consecutive days; R4 immediate
+
+# ── B3b. Per-stock behavior prior ────────────────────────────────────────────
+STOCK_TYPE_ALPHA0 = 5.0       # Beta(5,5): neutral 50/50, more conservative than strategy prior
+STOCK_TYPE_BETA0  = 5.0
+STOCK_TYPE_MIN_NEFF = 15      # neutral modifier (1.0) below this
+STOCK_TYPE_FILE   = CHECKPOINT_DIR / "stock_type_bayes.json"
+
+# ── B3c. Hierarchical cluster priors ─────────────────────────────────────────
+K_HIER = 25.0                 # mu_used = w*mu_strategy + (1-w)*mu_cluster, w = n_eff/(n_eff+K_HIER)
+
+# ── B3d. Change-point detection ──────────────────────────────────────────────
+CHANGEPOINT_HAZARD = 1.0 / 200.0   # prior prob of a change per trade
+CHANGEPOINT_ALARM  = 0.70          # temper posterior when p_change > this
+CHANGEPOINT_TEMPER = 0.5           # evidence halved toward prior on alarm
+CHANGEPOINT_STATE_FILE = CHECKPOINT_DIR / "changepoint_state.json"
+
+# ── B4e. Execution-quality layer ─────────────────────────────────────────────
+EXEC_CHASE_VETO_ATR   = 4.0    # ext > 4 ATR -> hard veto [EXEC_VETO chase]
+EXEC_SKIP_FLOOR       = 0.25   # exec_mult < floor -> [EXEC_SKIP]
+EXEC_MS_ACCEPT_ATR    = 0.3    # one close beyond a level by > 0.3 ATR accepts it
+EXEC_MS_ACCEPT_CLOSES = 2      # or >= 2 consecutive closes beyond
+EXEC_EE_EXT_HI        = 4.0    # ee_ext reaches 0.25 at 4 ATR extension
+EXEC_EE_VWAP_LO_ATR   = 4.0    # ee_vwap 1.0 within 4 ATR of VWAP
+EXEC_EE_VWAP_HI_ATR   = 8.0    # ee_vwap 0.5 at 8 ATR
+EXEC_EE_CONSEC_LO     = 4      # ee_consec 1.0 up to 4 same-dir candles
+EXEC_EE_CONSEC_HI     = 8      # ee_consec 0.5 at 8
+
+# ── B4f. Context layer ───────────────────────────────────────────────────────
+BREADTH_LONG_MIN   = 0.30      # LONG with advancers < 30% -> context_mult 0.7
+BREADTH_SHORT_MAX  = 0.70      # SHORT with advancers > 70% -> context_mult 0.7
+CONTEXT_MULT_OPPOSED = 0.7
+SIGNAL_LABEL_ATR_MULT = 0.5    # signal-outcome label: 0.5 ATR move within
+SIGNAL_LABEL_BARS     = 12     #   12 bars (1 hour)
+EARNINGS_CALENDAR_FILE = BASE_DIR / "config" / "earnings_calendar.json"
+
+# ── B4c. Meta-strategy external data (optional; graceful fallback) ────────────
+PCR_HISTORY_FILE  = BASE_DIR / "config" / "pcr_history.json"    # {date: pcr} or {date:{sym:pcr}}
+BLOCK_DEAL_FILE   = BASE_DIR / "config" / "block_deals.json"    # {date: {sym: net_sign}}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 3 — VALIDATION & WALK-FORWARD  (plan_phase3.md)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── B5. Calibration targets & drift ──────────────────────────────────────────
+ECE_TARGET          = 0.05
+BRIER_TARGET        = 0.22
+EV_REALISATION_MIN  = 0.50        # realised PnL/risk >= 50% of predicted EV
+PWIN_BINS           = [0.40, 0.50, 0.55, 0.60, 0.65, 1.01]   # ECE buckets
+PROB_DRIFT_WINDOW   = 30          # rolling trades
+PROB_DRIFT_ALARM    = 0.10        # |predicted - realised| win-rate gap
+IMPORTANCE_MIN_NEFF = 40          # "established" strategy threshold
+IMPORTANCE_LOOKBACK_MONTHS = 6
+
+# ── B5. Loss-threshold halt & approval gate ──────────────────────────────────
+DAILY_LOSS_HALT     = DAILY_HALT_MULT * MAX_DAILY_RISK   # 1.2 x 0.8% = 0.96% of capital
+MONTHLY_LOSS_HALT   = 0.04         # 4% of capital, rolling calendar month
+HALT_ADVISORY_CONSEC_LOSSES = 3
+HALT_ADVISORY_5DAY_RISK_MULT = 2.0
+HALT_STATE_FILE     = CHECKPOINT_DIR / "halt_state.json"
+
+# ── B5b. Execution simulator ─────────────────────────────────────────────────
+SIM_SPREAD_BPS_TIER = {"large": 3.0, "mid": 8.0, "small": 20.0}   # per-tier half-spread (bps)
+SIM_PARTICIPATION_CAP = 0.20      # order > 20% of bar volume -> partial fill / carry
+SIM_CIRCUIT_PENALTY = 0.20        # trapped-short auction penalty band (20%)
+SIM_LIQ_TIER_TURNOVER = {"large": 100e7, "mid": 20e7}   # >=100Cr large, >=20Cr mid, else small
+
+# ── B7. Robustness gates ─────────────────────────────────────────────────────
+DSR_CONFIDENCE      = 0.95
+PBO_GATE            = 0.20
+MC_SIMS             = 10000
+MC_DD_GATE          = 0.15        # P(max DD > 15%) < 5%
+MC_DD_PROB          = 0.05
+MC_NEGYEAR_PROB     = 0.10
+STRESS_DD_MULT      = 1.5         # DD <= 1.5x unstressed
+SENSITIVITY_PCT     = 0.25        # +-25% constant perturbation
+RISK_SCALE_MULTIPLIERS = [1.5, 2.0, 2.5]
+
+# ── B8. Capacity ─────────────────────────────────────────────────────────────
+CAPACITY_LEVELS     = [10_00_000, 50_00_000, 2_00_00_000, 10_00_00_000]
+CAPACITY_DEGRADE    = 0.20        # ceiling = Sharpe degrades >20% from 10L baseline
+
+# ── B6. Walk-forward windows ─────────────────────────────────────────────────
+WF_WINDOWS = [
+    {"wf": 1, "train_end": 2018, "test": 2019},
+    {"wf": 2, "train_end": 2019, "test": 2020},
+    {"wf": 3, "train_end": 2020, "test": 2021},
+    {"wf": 4, "train_end": 2021, "test": 2022},
+    {"wf": 5, "train_end": 2022, "test": 2023},
+    {"wf": 6, "train_end": 2023, "test": 2024},
+    {"wf": 7, "train_end": 2024, "test": 2025},
+    {"wf": 8, "train_end": 2025, "test": 2026},
+]

@@ -7,6 +7,8 @@ Path resolution: PROJECT_ROOT is two levels up from this file
   (dashboard/data_loader.py → dashboard/ → TradingAgent/)
 """
 
+from __future__ import annotations
+
 import json
 import sys
 from pathlib import Path

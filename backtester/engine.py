@@ -16,6 +16,8 @@ Usage:
     results = run_year(year=2016)
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from datetime import date, timedelta

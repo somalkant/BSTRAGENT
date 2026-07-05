@@ -6,6 +6,8 @@ Fetches the Nifty 500 constituent symbol list using multiple methods, in order:
   4. Local cache file (config/nifty500_symbols.csv) if previously saved
 """
 
+from __future__ import annotations
+
 import io
 import time
 import logging

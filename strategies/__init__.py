@@ -36,6 +36,23 @@ from strategies.bearish.bear_engulf import BearEngulfing
 # Phase 2B — dual-direction strategies
 from strategies.dual.pin_bar import PinBar
 from strategies.dual.intraday_struct import IntradayStructure
+# Phase 2 — 16 new strategies (B4)
+from strategies.breakout.pwh_pwl import PriorWeekBreakout            # A
+from strategies.breakout.ttm_squeeze import TTMSqueeze              # A
+from strategies.reversion.keltner_rev import KeltnerReversion       # B
+from strategies.reversion.mfi_divergence import MFIDivergence       # B
+from strategies.reversion.rsi_divergence import RSIDivergence       # B
+from strategies.reversion.vol_price_div import VolumePriceDivergence  # B
+from strategies.trend.parabolic_sar import ParabolicSAR            # C
+from strategies.structure.three_bar_rev import ThreeBarReversal     # D
+from strategies.structure.fvg import FairValueGap                   # D
+from strategies.context.fib_retracement import FibRetracement       # E
+from strategies.meta.options_pcr import OptionsPCR                  # F
+from strategies.meta.day_seasonality import DaySeasonality          # F
+from strategies.meta.pre_expiry import PreExpiry                    # F
+from strategies.meta.block_deal import BlockDeal                    # F
+from strategies.multiframe.mtf_orb import MTF15mORB                 # G
+from strategies.multiframe.mtf_ema import MTF15mEMA                 # G
 
 ALL_STRATEGIES = [
     ORB15(), ORB30(), PDH_PDL(), GapContinuation(), VolumeSpikeBreakout(),
@@ -52,6 +69,14 @@ ALL_STRATEGIES = [
     DoubleTop(), DescendingTriangle(), RisingWedge(), BearFlag(),
     FailedBreakout(), DeadCatBounce(), OpenWeakness(), BearEngulfing(),
     PinBar(), IntradayStructure(),
+    # Phase 2 — B4 new strategies
+    PriorWeekBreakout(), TTMSqueeze(),
+    KeltnerReversion(), MFIDivergence(), RSIDivergence(), VolumePriceDivergence(),
+    ParabolicSAR(),
+    ThreeBarReversal(), FairValueGap(),
+    FibRetracement(),
+    OptionsPCR(), DaySeasonality(), PreExpiry(), BlockDeal(),
+    MTF15mORB(), MTF15mEMA(),
 ]
 
 STRATEGY_NAMES = [s.name for s in ALL_STRATEGIES]

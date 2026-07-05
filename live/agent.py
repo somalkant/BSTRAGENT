@@ -42,6 +42,8 @@ How to get the access token:
   OR simply pass --token directly if you already have today's access token.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging

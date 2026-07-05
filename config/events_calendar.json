@@ -1,0 +1,13 @@
+{
+  "_meta": {
+    "note": "Macro event days -> SKIP (default) or RAISE_THRESHOLD. UNION_BUDGET dates are populated (Feb 1 from 2017; Feb 29 in 2016). RBI_MPC and US_FED_DECISION are INCOMPLETE — populate from RBI's published MPC schedule and the Fed's FOMC calendar (both released in advance) before the Phase 3 WF run. The filter mechanism is fully functional; missing dates simply mean fewer skip days.",
+    "_incomplete": ["RBI_MPC", "US_FED_DECISION"],
+    "source": "RBI MPC schedule (rbi.org.in), Fed FOMC calendar (federalreserve.gov), Union Budget (indiabudget.gov.in)"
+  },
+  "UNION_BUDGET": [
+    "2016-02-29", "2017-02-01", "2018-02-01", "2019-02-01", "2020-02-01",
+    "2021-02-01", "2022-02-01", "2023-02-01", "2024-02-01", "2025-02-01", "2026-02-01"
+  ],
+  "RBI_MPC": [],
+  "US_FED_DECISION": []
+}

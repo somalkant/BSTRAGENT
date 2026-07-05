@@ -16,6 +16,8 @@ Features:
   - Also downloads NIFTY50 index and INDIA VIX
 """
 
+from __future__ import annotations
+
 import json
 import time
 import logging
