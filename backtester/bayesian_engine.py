@@ -49,6 +49,14 @@ log = logging.getLogger(__name__)
 
 DRIVER_INELIGIBLE_CLUSTERS = {"E", "F"}   # context/meta accumulate no evidence -> not drivers
 
+# B5b short-universe impact counter: gated SHORTs dropped only for point-in-time F&O
+# ineligibility — measures how much short opportunity the broker constraint costs.
+SHORT_UNIVERSE_COUNTER = {"gated_shorts": 0, "outside_fno": 0}
+
+
+def reset_short_universe_counter() -> None:
+    SHORT_UNIVERSE_COUNTER.update(gated_shorts=0, outside_fno=0)
+
 
 @dataclass
 class DayContext:
@@ -167,8 +175,13 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
         if long_d and long_eligible(symbol, trade_date):
             long_cands.append(long_d)
         short_d = _pick_driver(symbol, signals, decision_bayes, -1, ctx, prev, today)
-        if short_d and fno_eligible_short(symbol, trade_date):
-            short_cands.append(short_d)
+        if short_d:
+            SHORT_UNIVERSE_COUNTER["gated_shorts"] += 1
+            if fno_eligible_short(symbol, trade_date):
+                short_cands.append(short_d)
+            else:
+                SHORT_UNIVERSE_COUNTER["outside_fno"] += 1
+                log.info(f"[SHORT_OUTSIDE_FNO {symbol} {short_d.driver.strategy}]")
 
     best_long = max(long_cands, key=lambda c: c.disc_ev, default=None)
     best_short = max(short_cands, key=lambda c: c.disc_ev, default=None)

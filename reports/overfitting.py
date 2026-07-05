@@ -83,6 +83,37 @@ def pbo_cscv(returns_matrix, n_blocks: int = 16) -> dict:
     return {"pbo": round(pbo, 4), "n_splits": len(logits), "pass": pbo < PBO_GATE}
 
 
+def cpcv(returns_matrix, n_blocks: int = 16, test_blocks: int = 2, embargo: int = 5) -> dict:
+    """
+    B7c — Combinatorial Purged Cross-Validation (plan_phase3.md §B7c). Builds many
+    train/test paths from the OOS span with an embargo gap around each test block so
+    overlapping positions / decayed posteriors don't leak. Reports the OOS Sharpe
+    distribution of the in-sample-best config (informational this cycle).
+    """
+    M = np.asarray(returns_matrix, dtype="float64")
+    T, N = M.shape
+    if N < 2 or T < n_blocks:
+        return {"paths": 0, "oos_sharpe_median": None}
+    blocks = np.array_split(np.arange(T), n_blocks)
+    oos_sharpes = []
+    for combo in itertools.combinations(range(n_blocks), test_blocks):
+        test_idx = np.concatenate([blocks[b] for b in combo])
+        lo, hi = test_idx.min() - embargo, test_idx.max() + embargo   # purge + embargo
+        train_idx = np.array([i for i in range(T)
+                              if i not in set(test_idx) and not (lo <= i <= hi)])
+        if len(train_idx) < n_blocks:
+            continue
+        is_sr = np.array([sharpe(M[train_idx, c]) for c in range(N)])
+        best = int(np.argmax(is_sr))
+        oos_sharpes.append(sharpe(M[test_idx, best]))
+    if not oos_sharpes:
+        return {"paths": 0, "oos_sharpe_median": None}
+    arr = np.asarray(oos_sharpes)
+    return {"paths": len(arr), "oos_sharpe_median": round(float(np.median(arr)), 4),
+            "oos_sharpe_5pct": round(float(np.percentile(arr, 5)), 4),
+            "frac_positive": round(float((arr > 0).mean()), 4)}
+
+
 def whites_reality_check(system_returns, strategy_returns_matrix, n_boot: int = 1000,
                          seed: int = 0) -> dict:
     """
