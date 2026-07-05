@@ -71,7 +71,8 @@ class Candidate:
 
 
 def _pick_driver(symbol, signals, bayes, direction, ctx: DayContext, prev, today) -> Candidate | None:
-    """Highest exec-discounted-EV driver-eligible strategy in `direction` passing the gate."""
+    """Highest exec-discounted-EV driver-eligible strategy in `direction` passing the gate.
+    `bayes` here is the DECISION state (frozen during a WF test year)."""
     best: Candidate | None = None
     is_event = ctx.is_event
     for name, sig in signals.items():
@@ -119,9 +120,11 @@ def _breadth(all_data, trade_date, hhmm: str) -> float | None:
 
 
 def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
-                 ctx: DayContext | None = None, stock_type: StockTypePrior | None = None) -> dict:
+                 ctx: DayContext | None = None, stock_type: StockTypePrior | None = None,
+                 decision_bayes: BayesianState | None = None) -> dict:
     ctx = ctx if ctx is not None else DayContext()
     stock_type = stock_type if stock_type is not None else StockTypePrior()
+    decision_bayes = decision_bayes if decision_bayes is not None else bayes   # frozen in WF test
     # 0. macro event gate
     is_event, events = event_day(trade_date)
     if is_event and event_mode() == "SKIP":
@@ -160,10 +163,10 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
         signals = {n: s for n, s in signals.items()
                    if not (s and s.direction != 0 and s.signal_time and after_last_entry(s.signal_time))}
 
-        long_d = _pick_driver(symbol, signals, bayes, +1, ctx, prev, today)
+        long_d = _pick_driver(symbol, signals, decision_bayes, +1, ctx, prev, today)
         if long_d and long_eligible(symbol, trade_date):
             long_cands.append(long_d)
-        short_d = _pick_driver(symbol, signals, bayes, -1, ctx, prev, today)
+        short_d = _pick_driver(symbol, signals, decision_bayes, -1, ctx, prev, today)
         if short_d and fno_eligible_short(symbol, trade_date):
             short_cands.append(short_d)
 
@@ -179,7 +182,7 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
         # breadth as of this driver's signal time (context_mult input; log tag)
         ctx.breadth = _breadth(all_data, trade_date, cand.driver.signal_time or "09:15")
         rec = _build_trade(cand, all_data, trade_date, bayes, turnover, risk_used,
-                           long_sector, short_sector, ctx, stock_type)
+                           long_sector, short_sector, ctx, stock_type, decision_bayes)
         if rec is None:
             continue
         risk_used += rec["intended_risk"]
@@ -194,12 +197,13 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
 
 def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
                  risk_used, long_sector, short_sector, ctx: DayContext,
-                 stock_type: StockTypePrior) -> dict | None:
+                 stock_type: StockTypePrior, decision_bayes: BayesianState | None = None) -> dict | None:
     sig = cand.driver
     gate = cand.gate
     eq = cand.exec_q
     direction = sig.direction
-    post = bayes.get_posterior(sig.strategy, direction, ctx.regime)
+    decision_bayes = decision_bayes if decision_bayes is not None else bayes
+    post = decision_bayes.get_posterior(sig.strategy, direction, ctx.regime)   # sizing uses frozen state
 
     # sector rule (skipped when the map is absent)
     sector = sector_of(cand.symbol, trade_date)
@@ -296,8 +300,13 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
 def run_year_bayesian(year: int, bayes: BayesianState | None = None,
                       paper_file=None, save_state=True, days_limit: int | None = None,
                       classifier: RegimeClassifier | None = None,
-                      stock_type: StockTypePrior | None = None) -> dict:
-    """Run one year through the Bayesian engine. Posteriors carry across days (and years)."""
+                      stock_type: StockTypePrior | None = None,
+                      decision_bayes: BayesianState | None = None) -> dict:
+    """
+    Run one year through the Bayesian engine. Posteriors carry across days (and years).
+    decision_bayes: WF test-year mode — DECISIONS use this frozen snapshot while the live
+    `bayes` keeps updating from test outcomes (never affects current-year decisions).
+    """
     bayes = bayes if bayes is not None else BayesianState.load()
     if bayes._cpm is None:
         bayes.attach_changepoint(ChangePointMonitor())     # B3d edge-death detector
@@ -322,7 +331,8 @@ def run_year_bayesian(year: int, bayes: BayesianState | None = None,
                                      ri.get("nifty_ret", 0.0), p80)
         ctx = DayContext(regime=regime, vix=ri.get("vix", 15.0), adx=ri.get("adx", 20.0),
                          bands=bands)
-        day = _process_day(td, all_data, nifty_data, bayes, ctx, stock_type)
+        day = _process_day(td, all_data, nifty_data, bayes, ctx, stock_type,
+                           decision_bayes=decision_bayes)
         recs = day.get("recommendations", [])
         all_recs.extend(recs)
         if recs:
