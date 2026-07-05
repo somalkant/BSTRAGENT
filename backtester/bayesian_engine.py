@@ -356,12 +356,11 @@ def run_year_bayesian(year: int, bayes: BayesianState | None = None,
     n_days = len(trading_days)
     t0 = time.time()
     for i, td in enumerate(trading_days):
-        if i == 0 or (i + 1) % 20 == 0 or i + 1 == n_days:
-            elapsed = time.time() - t0
-            rate = elapsed / (i + 1) if i else 0.0
-            eta_min = rate * (n_days - i - 1) / 60
-            log.info(f"[{year}] day {i + 1}/{n_days} ({(i + 1) / n_days * 100:.0f}%) "
-                     f"| {td} | ETA {eta_min:.1f} min")
+        elapsed = time.time() - t0
+        rate = elapsed / (i + 1) if i else 0.0
+        eta_min = rate * (n_days - i - 1) / 60
+        log.info(f"[{year}] day {i + 1}/{n_days} ({(i + 1) / n_days * 100:.0f}%) "
+                 f"| {td} | ETA {eta_min:.1f} min")
         ri = regime_inputs.get(td, {})
         bands = ri.get("vix_bands")
         p80 = bands["p80"] if bands else None
