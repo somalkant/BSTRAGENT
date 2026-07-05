@@ -348,3 +348,58 @@ EARNINGS_CALENDAR_FILE = BASE_DIR / "config" / "earnings_calendar.json"
 # ── B4c. Meta-strategy external data (optional; graceful fallback) ────────────
 PCR_HISTORY_FILE  = BASE_DIR / "config" / "pcr_history.json"    # {date: pcr} or {date:{sym:pcr}}
 BLOCK_DEAL_FILE   = BASE_DIR / "config" / "block_deals.json"    # {date: {sym: net_sign}}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 3 — VALIDATION & WALK-FORWARD  (plan_phase3.md)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── B5. Calibration targets & drift ──────────────────────────────────────────
+ECE_TARGET          = 0.05
+BRIER_TARGET        = 0.22
+EV_REALISATION_MIN  = 0.50        # realised PnL/risk >= 50% of predicted EV
+PWIN_BINS           = [0.40, 0.50, 0.55, 0.60, 0.65, 1.01]   # ECE buckets
+PROB_DRIFT_WINDOW   = 30          # rolling trades
+PROB_DRIFT_ALARM    = 0.10        # |predicted - realised| win-rate gap
+IMPORTANCE_MIN_NEFF = 40          # "established" strategy threshold
+IMPORTANCE_LOOKBACK_MONTHS = 6
+
+# ── B5. Loss-threshold halt & approval gate ──────────────────────────────────
+DAILY_LOSS_HALT     = DAILY_HALT_MULT * MAX_DAILY_RISK   # 1.2 x 0.8% = 0.96% of capital
+MONTHLY_LOSS_HALT   = 0.04         # 4% of capital, rolling calendar month
+HALT_ADVISORY_CONSEC_LOSSES = 3
+HALT_ADVISORY_5DAY_RISK_MULT = 2.0
+HALT_STATE_FILE     = CHECKPOINT_DIR / "halt_state.json"
+
+# ── B5b. Execution simulator ─────────────────────────────────────────────────
+SIM_SPREAD_BPS_TIER = {"large": 3.0, "mid": 8.0, "small": 20.0}   # per-tier half-spread (bps)
+SIM_PARTICIPATION_CAP = 0.20      # order > 20% of bar volume -> partial fill / carry
+SIM_CIRCUIT_PENALTY = 0.20        # trapped-short auction penalty band (20%)
+SIM_LIQ_TIER_TURNOVER = {"large": 100e7, "mid": 20e7}   # >=100Cr large, >=20Cr mid, else small
+
+# ── B7. Robustness gates ─────────────────────────────────────────────────────
+DSR_CONFIDENCE      = 0.95
+PBO_GATE            = 0.20
+MC_SIMS             = 10000
+MC_DD_GATE          = 0.15        # P(max DD > 15%) < 5%
+MC_DD_PROB          = 0.05
+MC_NEGYEAR_PROB     = 0.10
+STRESS_DD_MULT      = 1.5         # DD <= 1.5x unstressed
+SENSITIVITY_PCT     = 0.25        # +-25% constant perturbation
+RISK_SCALE_MULTIPLIERS = [1.5, 2.0, 2.5]
+
+# ── B8. Capacity ─────────────────────────────────────────────────────────────
+CAPACITY_LEVELS     = [10_00_000, 50_00_000, 2_00_00_000, 10_00_00_000]
+CAPACITY_DEGRADE    = 0.20        # ceiling = Sharpe degrades >20% from 10L baseline
+
+# ── B6. Walk-forward windows ─────────────────────────────────────────────────
+WF_WINDOWS = [
+    {"wf": 1, "train_end": 2018, "test": 2019},
+    {"wf": 2, "train_end": 2019, "test": 2020},
+    {"wf": 3, "train_end": 2020, "test": 2021},
+    {"wf": 4, "train_end": 2021, "test": 2022},
+    {"wf": 5, "train_end": 2022, "test": 2023},
+    {"wf": 6, "train_end": 2023, "test": 2024},
+    {"wf": 7, "train_end": 2024, "test": 2025},
+    {"wf": 8, "train_end": 2025, "test": 2026},
+]
