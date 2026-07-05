@@ -182,7 +182,7 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
                 short_cands.append(short_d)
             else:
                 SHORT_UNIVERSE_COUNTER["outside_fno"] += 1
-                log.info(f"[SHORT_OUTSIDE_FNO {symbol} {short_d.driver.strategy}]")
+                log.debug(f"[SHORT_OUTSIDE_FNO {symbol} {short_d.driver.strategy}]")
 
     best_long = max(long_cands, key=lambda c: c.disc_ev, default=None)
     best_short = max(short_cands, key=lambda c: c.disc_ev, default=None)
