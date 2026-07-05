@@ -27,7 +27,8 @@ from tqdm import tqdm
 
 from config.settings import (
     STOCKS_DIR, CAPITAL, MAX_DAILY_RISK, MAX_RISK_PER_TRADE, ROUND_RISK_TOLERANCE,
-    PAPER_TRADES_FILE, BAYES_STATE_FILE,
+    PAPER_TRADES_FILE, BAYES_STATE_FILE, DEFAULT_REGIME,
+    VIX_BAND_LO_PCTILE, VIX_BAND_HI_PCTILE, ADX_THRESHOLD, ADX_BAND,
 )
 from strategies import ALL_STRATEGIES
 from backtester.bayesian_gate import evaluate_entry, cluster_of
@@ -35,8 +36,13 @@ from backtester.bayesian_sizer import size_trade, fit_daily_risk, sectors_ok
 from backtester.execution import simulate_execution
 from backtester.filters import first_candle_filter, after_last_entry, event_day, event_mode
 from backtester.universe import data_integrity_ok, fno_eligible_short, long_eligible, sector_of
+from backtester.exec_quality import compute as exec_compute
+from backtester.context_tags import compute_tags, context_mult, signal_label, time_bucket
 from backtester.cost_model import net_pnl
 from weights.bayesian import BayesianState
+from weights.regime import RegimeClassifier
+from weights.stock_type import StockTypePrior
+from weights.changepoint import ChangePointMonitor
 from backtester import engine as _eng   # reuse data helpers
 
 log = logging.getLogger(__name__)
@@ -45,28 +51,47 @@ DRIVER_INELIGIBLE_CLUSTERS = {"E", "F"}   # context/meta accumulate no evidence 
 
 
 @dataclass
+class DayContext:
+    regime:    str = DEFAULT_REGIME
+    vix:       float = 15.0
+    adx:       float = 20.0
+    bands:     dict = None
+    breadth:   float | None = None
+    is_event:  bool = False
+
+
+@dataclass
 class Candidate:
     symbol: str
     driver: object          # Signal
     gate: object            # GateResult
     signals: dict
-    ev: float
+    exec_q: object          # ExecQuality
+    disc_ev: float          # execution-discounted EV (ranking key)
 
 
-def _pick_driver(symbol, signals, bayes, direction, is_event_day) -> Candidate | None:
-    """Highest-EV driver-eligible strategy firing in `direction` that passes the gate."""
+def _pick_driver(symbol, signals, bayes, direction, ctx: DayContext, prev, today) -> Candidate | None:
+    """Highest exec-discounted-EV driver-eligible strategy in `direction` passing the gate."""
     best: Candidate | None = None
+    is_event = ctx.is_event
     for name, sig in signals.items():
         if sig is None or sig.direction != direction or not sig.is_valid:
             continue
-        if cluster_of(name) in DRIVER_INELIGIBLE_CLUSTERS:
+        cl = cluster_of(name)
+        if cl in DRIVER_INELIGIBLE_CLUSTERS:
             continue
-        gate = evaluate_entry(sig, signals, bayes, is_event_day=is_event_day)
+        gate = evaluate_entry(sig, signals, bayes, is_event_day=is_event, regime=ctx.regime)
         if not gate.passed:
             continue
-        # rank by execution-discounted EV (exec/context = 1.0 in Phase 1 -> plain EV)
-        if best is None or gate.ev > best.ev:
-            best = Candidate(symbol, sig, gate, signals, gate.ev)
+        # B4e execution quality (L3 Trigger) — veto/skip and exec_mult
+        eq = exec_compute(sig, today, prev, cl)
+        if eq.veto or eq.skip:
+            log.info(f"{eq.log_line()} {symbol} {name}")
+            continue
+        cm = context_mult(direction, ctx.breadth)
+        disc_ev = gate.ev * eq.exec_mult * cm       # ranking and sizing must agree
+        if best is None or disc_ev > best.disc_ev:
+            best = Candidate(symbol, sig, gate, signals, eq, disc_ev)
     return best
 
 
@@ -78,32 +103,47 @@ def _trailing_median(history_5min: pd.DataFrame, trade_date) -> float:
     return float(daily.median()) if not daily.empty else 0.0
 
 
+def _breadth(all_data, trade_date, hhmm: str) -> float | None:
+    """Fraction of scanned stocks up (open -> price at hhmm). Lookahead-free (bars <= hhmm)."""
+    up = tot = 0
+    for df in all_data.values():
+        t = df[df["datetime"].dt.date == trade_date]
+        t = t[t["datetime"].dt.strftime("%H:%M") <= hhmm]
+        if len(t) < 1:
+            continue
+        op = float(t.iloc[0]["open"]); px = float(t.iloc[-1]["close"])
+        if op > 0:
+            tot += 1
+            up += 1 if px > op else 0
+    return (up / tot) if tot else None
+
+
 def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
-                 use_pre_filter=True) -> dict:
+                 ctx: DayContext | None = None, stock_type: StockTypePrior | None = None) -> dict:
+    ctx = ctx if ctx is not None else DayContext()
+    stock_type = stock_type if stock_type is not None else StockTypePrior()
     # 0. macro event gate
     is_event, events = event_day(trade_date)
     if is_event and event_mode() == "SKIP":
         log.info(f"[EVENT_DAY_SKIP: {','.join(events)}] {trade_date}")
         return {"date": str(trade_date), "recommendations": [], "skipped": "event"}
-    raise_thr = is_event and event_mode() == "RAISE_THRESHOLD"
+    if is_event and event_mode() == "RAISE_THRESHOLD":
+        ctx.is_event = True                # raised bars in _pick_driver/evaluate_entry
 
-    scan_data = all_data
     long_cands: list[Candidate] = []
     short_cands: list[Candidate] = []
 
-    for symbol, df in scan_data.items():
+    for symbol, df in all_data.items():
         today = _eng._get_today(df, trade_date)
         if today.empty or len(today) < 10:
             continue
         history = df[df["datetime"].dt.date < trade_date]
 
-        # data-integrity gate (glitch guard)
         today_med = float(today["close"].median())
         if not data_integrity_ok(today_med, _trailing_median(df, trade_date), symbol, trade_date):
             continue
 
         prev = _eng._get_prev_day_ohlc(history, trade_date)
-
         signals = {}
         for strat in ALL_STRATEGIES:
             try:
@@ -114,34 +154,32 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
                 from strategies.base import Signal
                 signals[strat.name] = Signal(strat.name, 0)
 
-        # first-candle block: drop non-exempt strategies that fired at 09:15
         signals = {n: s for n, s in signals.items()
                    if not (s and s.direction != 0 and s.signal_time == "09:15"
                            and n not in first_candle_filter({n: s}, "09:15"))}
-        # last-entry cutoff: no NEW entries at/after 14:30
         signals = {n: s for n, s in signals.items()
                    if not (s and s.direction != 0 and s.signal_time and after_last_entry(s.signal_time))}
 
-        long_d = _pick_driver(symbol, signals, bayes, +1, raise_thr)
+        long_d = _pick_driver(symbol, signals, bayes, +1, ctx, prev, today)
         if long_d and long_eligible(symbol, trade_date):
             long_cands.append(long_d)
-        short_d = _pick_driver(symbol, signals, bayes, -1, raise_thr)
+        short_d = _pick_driver(symbol, signals, bayes, -1, ctx, prev, today)
         if short_d and fno_eligible_short(symbol, trade_date):
             short_cands.append(short_d)
 
-    # take highest-EV LONG + highest-EV SHORT
-    best_long = max(long_cands, key=lambda c: c.ev, default=None)
-    best_short = max(short_cands, key=lambda c: c.ev, default=None)
+    best_long = max(long_cands, key=lambda c: c.disc_ev, default=None)
+    best_short = max(short_cands, key=lambda c: c.disc_ev, default=None)
 
-    turnover = _eng._estimate_turnover(all_data, trade_date)   # crores
+    turnover = _eng._estimate_turnover(all_data, trade_date)
     recs = []
     risk_used = 0.0
-    # size the higher-EV side first so the daily-risk cap favours the better trade
-    ordered = sorted([c for c in (best_long, best_short) if c], key=lambda c: -c.ev)
+    ordered = sorted([c for c in (best_long, best_short) if c], key=lambda c: -c.disc_ev)
     long_sector = short_sector = None
     for cand in ordered:
+        # breadth as of this driver's signal time (context_mult input; log tag)
+        ctx.breadth = _breadth(all_data, trade_date, cand.driver.signal_time or "09:15")
         rec = _build_trade(cand, all_data, trade_date, bayes, turnover, risk_used,
-                           long_sector, short_sector)
+                           long_sector, short_sector, ctx, stock_type)
         if rec is None:
             continue
         risk_used += rec["intended_risk"]
@@ -155,11 +193,13 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
 
 
 def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
-                 risk_used, long_sector, short_sector) -> dict | None:
+                 risk_used, long_sector, short_sector, ctx: DayContext,
+                 stock_type: StockTypePrior) -> dict | None:
     sig = cand.driver
     gate = cand.gate
+    eq = cand.exec_q
     direction = sig.direction
-    post = bayes.get_posterior(sig.strategy, direction)
+    post = bayes.get_posterior(sig.strategy, direction, ctx.regime)
 
     # sector rule (skipped when the map is absent)
     sector = sector_of(cand.symbol, trade_date)
@@ -169,11 +209,14 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
         log.info(f"[SECTOR_RULE_SKIP {cand.symbol} {sector}]")
         return None
 
+    cm = context_mult(direction, ctx.breadth)             # B4f: the one context sizing rule
     adv_rs = turnover.get(cand.symbol, 0.0) * 1e7
     r = size_trade(sig.entry, sig.stop, sig.rr, gate.ev, post.posterior_scale, gate.gate_mult,
-                   adv_turnover_rs=adv_rs, available_cash=CAPITAL, burn_in=gate.burn_in)
+                   adv_turnover_rs=adv_rs, available_cash=CAPITAL, burn_in=gate.burn_in,
+                   exec_mult=eq.exec_mult, context_mult=cm)   # B4e/B4f full sizing chain
     if not r.ok:
-        log.info(f"[{r.skip_reason.upper()}] {cand.symbol} {sig.strategy} flags={r.flags}")
+        cause = " cause=exec_mult" if "LOT_ROUND_SKIP" in r.flags and eq.exec_mult < 1.0 else ""
+        log.info(f"[{r.skip_reason.upper()}{cause}] {cand.symbol} {sig.strategy} flags={r.flags}")
         return None
 
     # enforce 0.8%/day: shrink intended risk to headroom; skip if none
@@ -201,24 +244,46 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
                  f"realized={actual_risk / CAPITAL * 100:.2f}%]")
         return None
 
-    # driver-only posterior update
-    bayes.update(sig.strategy, direction, pnl_rs=pnl, risk_amount=actual_risk, rr=sig.rr)
+    # settled trade -> compute the [0,1] evidence score, update driver posterior (with
+    # regime tag) and the per-stock behavior prior (B3b), and run change-point detection
+    score, _, _ = bayes.score_from_pnl(pnl, actual_risk, sig.rr)
+    bayes.update(sig.strategy, direction, pnl_rs=pnl, risk_amount=actual_risk, rr=sig.rr,
+                 regime=ctx.regime)
+    dcluster = cluster_of(sig.strategy)
+    stock_type.update(cand.symbol, dcluster, score)
 
-    log.info("TRADE %s %-12s %-5s %s", trade_date, cand.symbol,
-             "LONG" if direction > 0 else "SHORT", gate.log_line(cand.symbol, sig.strategy))
+    # B4f trade tags + pre-registered signal-level outcome label (log-only)
+    today_bars = _eng._get_today(all_data[cand.symbol], trade_date)
+    history = all_data[cand.symbol][all_data[cand.symbol]["datetime"].dt.date < trade_date]
+    prev = _eng._get_prev_day_ohlc(history, trade_date)
+    tags = compute_tags(sig, today_bars, prev, history, breadth=ctx.breadth)
+    from backtester.exec_quality import _atr as _atr_of
+    label = signal_label(sig, today_bars, _atr_of(today_bars[
+        today_bars["datetime"].dt.strftime("%H:%M") <= (sig.signal_time or "09:15")]))
+
+    log.info("TRADE %s %-12s %-5s regime=%s %s %s", trade_date, cand.symbol,
+             "LONG" if direction > 0 else "SHORT", ctx.regime,
+             gate.log_line(cand.symbol, sig.strategy), eq.log_line())
 
     return {
         "date": str(trade_date), "symbol": cand.symbol,
         "direction": "LONG" if direction > 0 else "SHORT",
         "driver_strategy": sig.strategy, "signal_time": sig.signal_time,
         "entry_price": ex.entry_fill, "quantity": shares, "position_rs": round(shares * ex.entry_fill, 2),
-        "stop_loss": sig.stop, "target": sig.target, "rr": sig.rr,
-        "ev": round(gate.ev, 4), "driver_mu": round(gate.driver_mu, 4),
+        "stop_loss": sig.stop, "target": sig.target, "rr": sig.rr, "regime": ctx.regime,
+        "ev": round(gate.ev, 4), "disc_ev": round(cand.disc_ev, 4),
+        "driver_mu": round(gate.driver_mu, 4),
         "driver_p": round(gate.driver_p, 4), "gate_mult": gate.gate_mult,
+        "exec_ms": eq.ms, "exec_ee": eq.ee, "exec_cq": eq.cq, "exec_mq": eq.mq,
+        "exec_mult": eq.exec_mult, "context_mult": cm,
         "eff_binary": gate.clusters.eff_binary, "eff_weighted": gate.clusters.eff_weighted,
         "clusters_confirmed": "".join(sorted(gate.clusters.confirmed)),
         "clusters_contradicting": "".join(sorted(gate.clusters.contradicting)),
         "cf_contra": gate.cf_contra, "sector": sector or "",
+        "stock_type": stock_type.label(cand.symbol),
+        "day_type": tags.day_type, "gap_pct": tags.gap_pct, "breadth": tags.breadth,
+        "sector_rs": tags.sector_rs, "daily_trend": tags.daily_trend, "time_bucket": tags.time_bucket,
+        "signal_label": label,
         "intended_risk": r.intended_risk, "actual_risk": round(actual_risk, 2),
         "risk_pct": round(actual_risk / CAPITAL * 100, 4),
         "exit_time": ex.exit_time, "exit_price": ex.exit_price, "exit_reason": ex.exit_reason,
@@ -229,10 +294,19 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
 
 
 def run_year_bayesian(year: int, bayes: BayesianState | None = None,
-                      paper_file=None, save_state=True, days_limit: int | None = None) -> dict:
+                      paper_file=None, save_state=True, days_limit: int | None = None,
+                      classifier: RegimeClassifier | None = None,
+                      stock_type: StockTypePrior | None = None) -> dict:
     """Run one year through the Bayesian engine. Posteriors carry across days (and years)."""
     bayes = bayes if bayes is not None else BayesianState.load()
+    if bayes._cpm is None:
+        bayes.attach_changepoint(ChangePointMonitor())     # B3d edge-death detector
+    stock_type = stock_type if stock_type is not None else StockTypePrior.load()
+    classifier = classifier if classifier is not None else RegimeClassifier()
     paper_file = paper_file or PAPER_TRADES_FILE
+
+    from backtester.regime_data import build_regime_inputs
+    regime_inputs = build_regime_inputs(year)              # per-date VIX/ADX/nifty_ret/bands
 
     all_data, nifty_data = _eng._preload_data(year)
     trading_days = _eng._get_trading_days(all_data, year)
@@ -241,7 +315,14 @@ def run_year_bayesian(year: int, bayes: BayesianState | None = None,
 
     all_recs = []
     for td in tqdm(trading_days, desc=f"Bayes {year}", unit="day"):
-        day = _process_day(td, all_data, nifty_data, bayes)
+        ri = regime_inputs.get(td, {})
+        bands = ri.get("vix_bands")
+        p80 = bands["p80"] if bands else None
+        regime = classifier.classify(ri.get("vix", 15.0), ri.get("adx", 20.0),
+                                     ri.get("nifty_ret", 0.0), p80)
+        ctx = DayContext(regime=regime, vix=ri.get("vix", 15.0), adx=ri.get("adx", 20.0),
+                         bands=bands)
+        day = _process_day(td, all_data, nifty_data, bayes, ctx, stock_type)
         recs = day.get("recommendations", [])
         all_recs.extend(recs)
         if recs:
@@ -249,6 +330,7 @@ def run_year_bayesian(year: int, bayes: BayesianState | None = None,
 
     if save_state:
         bayes.save(BAYES_STATE_FILE)
+        stock_type.save()
 
     n = len(all_recs)
     wins = sum(1 for r in all_recs if r["pnl_rs"] > 0)

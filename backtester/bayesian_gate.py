@@ -117,7 +117,7 @@ class GateResult:
 
 # ── cluster counting + confidence votes (§2g) ────────────────────────────────
 def count_clusters(signals: dict, driver_direction: int, bayes: BayesianState,
-                   driver_time: str | None = None) -> ClusterResult:
+                   driver_time: str | None = None, regime: str = "global") -> ClusterResult:
     """
     signals: {strategy_name: Signal}. Returns confirmed/contradicting cluster sets,
     per-confirming-cluster confidence c_i, and eff_binary / eff_weighted.
@@ -147,12 +147,12 @@ def count_clusters(signals: dict, driver_direction: int, bayes: BayesianState,
                 continue
         if sig.direction == driver_direction:
             confirmed.add(cl)
-            p = bayes.get_posterior(name, driver_direction).p_win()
+            p = bayes.get_posterior(name, driver_direction, regime).p_win()
             if cl not in p_best or p > p_best[cl]:
                 p_best[cl] = p
         elif sig.direction == -driver_direction:
             contradicting.add(cl)
-            p = bayes.get_posterior(name, -driver_direction).p_win()
+            p = bayes.get_posterior(name, -driver_direction, regime).p_win()
             if cl not in p_best_contra or p > p_best_contra[cl]:
                 p_best_contra[cl] = p
 
@@ -177,21 +177,23 @@ def _ramp(x: float, lo: float, hi: float) -> float:
 
 # ── full entry decision ───────────────────────────────────────────────────────
 def evaluate_entry(driver_signal, signals: dict, bayes: BayesianState,
-                   is_event_day: bool = False) -> GateResult:
+                   is_event_day: bool = False, regime: str = "global") -> GateResult:
     """
     driver_signal: the chosen Signal (has .strategy, .direction, .rr).
+    regime: uses the regime-conditional posterior (falls back to global at low n_eff).
     Returns a GateResult with gate_mult (0 => rejected).
     """
     direction = driver_signal.direction
     rr = driver_signal.rr
-    post = bayes.get_posterior(driver_signal.strategy, direction)
+    post = bayes.get_posterior(driver_signal.strategy, direction, regime)
     driver_p = post.p_win()
     driver_mu = post.mu
     ev = post.ev(rr)
     burn_in = post.n_eff < BAYES_BURN_IN_NEFF   # driver still gathering evidence
 
     clusters = count_clusters(signals, direction, bayes,
-                              driver_time=getattr(driver_signal, "signal_time", None))
+                              driver_time=getattr(driver_signal, "signal_time", None),
+                              regime=regime)
 
     # event-day raised bars (§ macro filter RAISE_THRESHOLD mode)
     ev_floor = EVENT_MIN_EV if is_event_day else EV_GATE_LOW
