@@ -310,11 +310,21 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
     }
 
 
+def _limit_universe(all_data: dict, max_stocks: int) -> dict:
+    """Keep the top-N stocks by full-year turnover (for fast bounded runs)."""
+    if not max_stocks or len(all_data) <= max_stocks:
+        return all_data
+    turn = {s: float((df["close"] * df["volume"]).sum()) for s, df in all_data.items()}
+    top = sorted(turn, key=turn.get, reverse=True)[:max_stocks]
+    return {s: all_data[s] for s in top}
+
+
 def run_year_bayesian(year: int, bayes: BayesianState | None = None,
                       paper_file=None, save_state=True, days_limit: int | None = None,
                       classifier: RegimeClassifier | None = None,
                       stock_type: StockTypePrior | None = None,
-                      decision_bayes: BayesianState | None = None) -> dict:
+                      decision_bayes: BayesianState | None = None,
+                      max_stocks: int | None = None) -> dict:
     """
     Run one year through the Bayesian engine. Posteriors carry across days (and years).
     decision_bayes: WF test-year mode — DECISIONS use this frozen snapshot while the live
@@ -331,6 +341,9 @@ def run_year_bayesian(year: int, bayes: BayesianState | None = None,
     regime_inputs = build_regime_inputs(year)              # per-date VIX/ADX/nifty_ret/bands
 
     all_data, nifty_data = _eng._preload_data(year)
+    if max_stocks:
+        all_data = _limit_universe(all_data, max_stocks)
+    log.info(f"[{year}] {len(all_data)} stocks loaded")
     trading_days = _eng._get_trading_days(all_data, year)
     if days_limit:
         trading_days = trading_days[:days_limit]

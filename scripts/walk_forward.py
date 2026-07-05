@@ -29,7 +29,8 @@ def wf_snapshot_path(wf: int) -> Path:
     return CHECKPOINT_DIR / f"wf{wf}_bayes.json"
 
 
-def run_walk_forward(days_limit: int | None = None, windows=None) -> list[dict]:
+def run_walk_forward(days_limit: int | None = None, windows=None,
+                     max_stocks: int | None = None) -> list[dict]:
     """Execute the WF protocol. Returns a per-step summary list."""
     windows = windows or WF_WINDOWS
     bayes = BayesianState()
@@ -46,7 +47,7 @@ def run_walk_forward(days_limit: int | None = None, windows=None) -> list[dict]:
         for yr in range(trained_through + 1, train_end + 1):
             s = be.run_year_bayesian(yr, bayes=bayes, save_state=False,
                                      classifier=classifier, stock_type=stock_type,
-                                     days_limit=days_limit,
+                                     days_limit=days_limit, max_stocks=max_stocks,
                                      paper_file=CHECKPOINT_DIR / f"wf_train_{yr}.csv")
             results.append({"step": "train", "year": yr, **s})
         trained_through = max(trained_through, train_end)
@@ -60,7 +61,7 @@ def run_walk_forward(days_limit: int | None = None, windows=None) -> list[dict]:
         # 3) TEST — decisions on frozen snapshot; live `bayes` keeps updating from outcomes
         s = be.run_year_bayesian(test_year, bayes=bayes, decision_bayes=frozen,
                                  save_state=False, classifier=classifier, stock_type=stock_type,
-                                 days_limit=days_limit,
+                                 days_limit=days_limit, max_stocks=max_stocks,
                                  paper_file=CHECKPOINT_DIR / f"wf{wf}_test_{test_year}.csv")
         results.append({"step": "test", "wf": wf, "year": test_year, **s})
 
