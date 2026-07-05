@@ -12,7 +12,7 @@ above it then close below it with volume confirmation.
 from __future__ import annotations
 import numpy as np
 import pandas as pd
-from strategies.base import BaseStrategy, Signal
+from strategies.base import BaseStrategy, Signal, daily_ohlcv
 
 
 class FailedBreakout(BaseStrategy):
@@ -69,8 +69,7 @@ class FailedBreakout(BaseStrategy):
         # PDH (previous day high) is the most reliable intraday resistance
         if history_5min.empty:
             return None
-        daily = (history_5min.groupby(history_5min["datetime"].dt.date)
-                 .agg(high=("high","max")))
+        daily = daily_ohlcv(history_5min)
         if daily.empty:
             return None
         pdh = float(daily["high"].iloc[-1])
@@ -85,8 +84,7 @@ class FailedBreakout(BaseStrategy):
     def _find_support(self, history_5min, today_5min) -> float | None:
         if history_5min.empty:
             return None
-        daily = (history_5min.groupby(history_5min["datetime"].dt.date)
-                 .agg(low=("low","min")))
+        daily = daily_ohlcv(history_5min)
         if daily.empty:
             return None
         return float(daily["low"].iloc[-1])   # PDL as nearest support

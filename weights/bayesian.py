@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, asdict
+from functools import lru_cache
 from pathlib import Path
 
 from scipy.stats import beta as beta_dist
@@ -260,11 +261,18 @@ class BayesianState:
         }
 
     # ── query ─────────────────────────────────────────────────────────────────
+    @staticmethod
+    @lru_cache(maxsize=4096)
+    def _beta_ci(a: float, b: float) -> tuple[float, float]:
+        """scipy's Beta ppf is an expensive numerical inversion; (alpha, beta) only
+        change once per settled trade but get queried many times per day across
+        stocks, so the identical (a, b) pair recurs constantly — cache it."""
+        return float(beta_dist.ppf(0.25, a, b)), float(beta_dist.ppf(0.75, a, b))
+
     def _posterior_from_cell(self, strategy, direction, cell: _Cell) -> Posterior:
         a, b = cell.alpha, cell.beta
         mu = a / (a + b)
-        q25 = float(beta_dist.ppf(0.25, a, b))
-        q75 = float(beta_dist.ppf(0.75, a, b))
+        q25, q75 = self._beta_ci(a, b)
         ci_width = q75 - q25
         posterior_scale = max(0.0, min(1.0, 1.0 - ci_width / _PRIOR_CI_WIDTH))
         return Posterior(

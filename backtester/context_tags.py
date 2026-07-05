@@ -21,6 +21,7 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import pandas as pd
 
+from strategies.base import daily_ohlcv
 from config.settings import (
     BREADTH_LONG_MIN, BREADTH_SHORT_MAX, CONTEXT_MULT_OPPOSED,
     SIGNAL_LABEL_ATR_MULT, SIGNAL_LABEL_BARS,
@@ -53,7 +54,7 @@ def time_bucket(signal_time: str) -> str:
 def _daily_closes(history_5min: pd.DataFrame) -> pd.Series:
     if history_5min is None or history_5min.empty:
         return pd.Series(dtype="float64")
-    return history_5min.groupby(history_5min["datetime"].dt.date)["close"].last()
+    return daily_ohlcv(history_5min)["close"]
 
 
 def compute_tags(signal, today_5min: pd.DataFrame, prev_day, history_5min,

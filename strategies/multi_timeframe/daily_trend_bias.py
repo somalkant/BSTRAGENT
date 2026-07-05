@@ -18,7 +18,7 @@ get a weight-sized boost; stocks in downtrends get suppressed.
 """
 import numpy as np
 import pandas as pd
-from strategies.base import BaseStrategy, Signal
+from strategies.base import BaseStrategy, Signal, daily_ohlcv
 
 
 class DailyTrendBias(BaseStrategy):
@@ -73,9 +73,7 @@ class DailyTrendBias(BaseStrategy):
 
     @staticmethod
     def _daily(history_5min, n):
-        return (history_5min.groupby(history_5min["datetime"].dt.date)
-                .agg(close=("close", "last"))
-                .tail(n))
+        return daily_ohlcv(history_5min)[["close"]].tail(n)
 
     @staticmethod
     def _rsi(closes, period=14):

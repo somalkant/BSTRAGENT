@@ -19,11 +19,11 @@ Per day:
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from datetime import date
 
 import pandas as pd
-from tqdm import tqdm
 
 from config.settings import (
     STOCKS_DIR, CAPITAL, MAX_DAILY_RISK, MAX_RISK_PER_TRADE, ROUND_RISK_TOLERANCE,
@@ -95,7 +95,7 @@ def _pick_driver(symbol, signals, bayes, direction, ctx: DayContext, prev, today
         # B4e execution quality (L3 Trigger) — veto/skip and exec_mult
         eq = exec_compute(sig, today, prev, cl)
         if eq.veto or eq.skip:
-            log.info(f"{eq.log_line()} {symbol} {name}")
+            log.debug(f"{eq.log_line()} {symbol} {name}")
             continue
         cm = context_mult(direction, ctx.breadth)
         disc_ev = gate.ev * eq.exec_mult * cm       # ranking and sizing must agree
@@ -104,11 +104,12 @@ def _pick_driver(symbol, signals, bayes, direction, ctx: DayContext, prev, today
     return best
 
 
-def _trailing_median(history_5min: pd.DataFrame, trade_date) -> float:
-    hist = history_5min[history_5min["datetime"].dt.date < trade_date]
-    if hist.empty:
+def _trailing_median(history: pd.DataFrame) -> float:
+    """history: already filtered to dates < trade_date (see _process_day) — do not
+    re-filter the full multi-year frame here, that's the expensive part."""
+    if history.empty:
         return 0.0
-    daily = hist.groupby(hist["datetime"].dt.date)["close"].median().tail(5)
+    daily = history.groupby(history["datetime"].dt.date)["close"].median().tail(5)
     return float(daily.median()) if not daily.empty else 0.0
 
 
@@ -151,7 +152,7 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
         history = df[df["datetime"].dt.date < trade_date]
 
         today_med = float(today["close"].median())
-        if not data_integrity_ok(today_med, _trailing_median(df, trade_date), symbol, trade_date):
+        if not data_integrity_ok(today_med, _trailing_median(history), symbol, trade_date):
             continue
 
         prev = _eng._get_prev_day_ohlc(history, trade_date)
@@ -278,9 +279,12 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
     label = signal_label(sig, today_bars, _atr_of(today_bars[
         today_bars["datetime"].dt.strftime("%H:%M") <= (sig.signal_time or "09:15")]))
 
-    log.info("TRADE %s %-12s %-5s regime=%s %s %s", trade_date, cand.symbol,
+    outcome = (f"entry={ex.entry_fill:.2f}@{ex.entry_time} exit={ex.exit_price:.2f}@{ex.exit_time} "
+               f"{ex.exit_reason:<12} size={shares}sh (Rs {shares * ex.entry_fill:,.0f}) "
+               f"P&L Rs {pnl:+,.0f}")
+    log.info("TRADE %s %-12s %-5s regime=%s %s %s | %s", trade_date, cand.symbol,
              "LONG" if direction > 0 else "SHORT", ctx.regime,
-             gate.log_line(cand.symbol, sig.strategy), eq.log_line())
+             gate.log_line(cand.symbol, sig.strategy), eq.log_line(), outcome)
 
     return {
         "date": str(trade_date), "symbol": cand.symbol,
@@ -349,7 +353,15 @@ def run_year_bayesian(year: int, bayes: BayesianState | None = None,
         trading_days = trading_days[:days_limit]
 
     all_recs = []
-    for td in tqdm(trading_days, desc=f"Bayes {year}", unit="day"):
+    n_days = len(trading_days)
+    t0 = time.time()
+    for i, td in enumerate(trading_days):
+        if i == 0 or (i + 1) % 20 == 0 or i + 1 == n_days:
+            elapsed = time.time() - t0
+            rate = elapsed / (i + 1) if i else 0.0
+            eta_min = rate * (n_days - i - 1) / 60
+            log.info(f"[{year}] day {i + 1}/{n_days} ({(i + 1) / n_days * 100:.0f}%) "
+                     f"| {td} | ETA {eta_min:.1f} min")
         ri = regime_inputs.get(td, {})
         bands = ri.get("vix_bands")
         p80 = bands["p80"] if bands else None

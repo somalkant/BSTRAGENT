@@ -8,10 +8,18 @@ kiteconnect>=5.0.1
 pandas>=2.1.0
 polars>=0.20.0
 pyarrow>=14.0.0
-numpy>=1.26.0
+numpy>=1.26.0,<2.3          # scipy 1.13 (last py3.9 line) caps numpy <2.3
+
+# Scientific / stats — required by weights/bayesian.py, reports/calibration.py,
+# reports/overfitting.py (scipy.stats: beta, norm, skew, kurtosis)
+scipy>=1.11,<1.14           # 1.13.x is the last release supporting Python 3.9
 
 # Technical Indicators
-pandas-ta>=0.4.0
+# NOTE: pandas-ta is NOT installed from PyPI — no Python-3.9-compatible release exists
+# (0.4.x needs Python >=3.12; 0.3.14b0 was pulled). A vendored shim in ./pandas_ta/
+# supplies the indicators the strategies use. Delete that folder + uncomment below only
+# on Python >= 3.12.
+# pandas-ta>=0.4.0
 
 # Free data for global cues (SGX Nifty, Dow futures, India VIX cross-check)
 yfinance>=0.2.36
@@ -21,13 +29,15 @@ python-dotenv>=1.0.0
 
 # HTTP / Retries
 requests>=2.31.0
-urllib3>=2.0.0
+urllib3>=1.26,<2            # kiteconnect pins urllib3<2; do NOT bump to >=2 or install conflicts
 
 # Progress bars
 tqdm>=4.66.0
 
 # Backtesting reports (Phase 2)
-vectorbt>=0.26.2
+# DROPPED: vectorbt is imported by ZERO files and its numba/llvmlite stack requires
+# numpy<2, which would downgrade the core. Re-add only if a module actually imports it.
+# vectorbt>=0.26.2
 
 # Notebooks & Charts
 jupyterlab>=4.0.0

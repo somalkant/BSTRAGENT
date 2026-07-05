@@ -4,6 +4,7 @@ documented NSE calendar effect). Only fires in the expiry week."""
 from __future__ import annotations
 
 import pandas as pd
+from strategies.base import daily_ohlcv
 from strategies.meta._meta_base import MetaStrategy, in_expiry_week
 
 
@@ -15,8 +16,7 @@ class PreExpiry(MetaStrategy):
             return self._no_signal()
         if history_5min is None or history_5min.empty:
             return self._no_signal()
-        h = history_5min.copy()
-        daily = h.groupby(h["datetime"].dt.date).agg(cl=("close", "last")).tail(4)
+        daily = daily_ohlcv(history_5min)[["close"]].rename(columns={"close": "cl"}).tail(4)
         if len(daily) < 4:
             return self._no_signal()
         trend = (float(daily["cl"].iloc[-1]) - float(daily["cl"].iloc[0])) / float(daily["cl"].iloc[0])

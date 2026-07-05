@@ -35,11 +35,13 @@ def test_entry_is_next_bar_open_not_signal_close():
 def test_long_target_hit():
     bars = _bars([("09:15", 100, 100, 100, 100),
                   ("09:20", 100, 101, 99.8, 100.5),
-                  ("09:25", 100.5, 106.5, 100.4, 106)])   # high 106.5 >= target 106
+                  ("09:25", 100.5, 106.5, 100.4, 106)])   # high 106.5 >= re-anchored target (~106.05)
     sig = Signal("X", +1, entry=100, target=106, stop=98, rr=3.0, signal_time="09:15")
     r = simulate_execution(sig, bars, shares=1)
     assert r.exit_reason == "TARGET"
-    assert r.exit_price < 106          # slippage on exit (sell below target)
+    # target is re-anchored to entry_fill + the signal's original distance (6), not the raw 106
+    reanchored_target = r.entry_fill + (106 - 100)
+    assert r.exit_price < reanchored_target          # slippage on exit (sell below target)
 
 
 def test_long_stop_hit():
@@ -65,7 +67,8 @@ def test_eod_square_off_1510():
 
 
 def test_mfe_mae_in_r_units():
-    # long entry ~100, risk/share = 2 (stop 98). High 104 -> +2R favourable, low 99 -> -0.5R adverse
+    # long entry ~100, risk/share = 2 (fixed R-distance from signal.entry-signal.stop, NOT
+    # re-derived from entry_fill). High 104 -> ~+2R favourable, low 99 -> ~-0.5R adverse
     bars = _bars([("09:15", 100, 100, 100, 100),
                   ("09:20", 100, 100, 100, 100),          # entry bar open 100
                   ("09:25", 100, 104, 99, 100),           # max high 104 -> MFE, min low 99 -> MAE
@@ -73,8 +76,9 @@ def test_mfe_mae_in_r_units():
     sig = Signal("X", +1, entry=100, target=106, stop=98, rr=3.0, signal_time="09:15")
     r = simulate_execution(sig, bars, shares=1)
     entry = r.entry_fill                                   # ~100.05 with slippage
-    assert r.mfe_r == pytest.approx((104 - entry) / abs(entry - 98), abs=0.02)
-    assert r.mae_r == pytest.approx((99 - entry) / abs(entry - 98), abs=0.02)
+    stop_dist = 100 - 98                                    # fixed R-distance, preserved through re-anchoring
+    assert r.mfe_r == pytest.approx((104 - entry) / stop_dist, abs=0.02)
+    assert r.mae_r == pytest.approx((99 - entry) / stop_dist, abs=0.02)
     assert r.mae_r < 0
 
 

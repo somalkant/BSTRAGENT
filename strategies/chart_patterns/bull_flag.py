@@ -8,7 +8,7 @@ boundary.  Target = flag top + pole height (measured move).
 """
 import numpy as np
 import pandas as pd
-from strategies.base import BaseStrategy, Signal
+from strategies.base import BaseStrategy, Signal, daily_ohlcv
 
 
 class BullFlag(BaseStrategy):
@@ -86,10 +86,7 @@ class BullFlag(BaseStrategy):
 
     @staticmethod
     def _daily(history_5min, n):
-        return (history_5min.groupby(history_5min["datetime"].dt.date)
-                .agg(open=("open","first"), high=("high","max"),
-                     low=("low","min"), close=("close","last"))
-                .tail(n))
+        return daily_ohlcv(history_5min)[["open", "high", "low", "close"]].tail(n)
 
     def _find_breakout(self, today_5min, level):
         for _, c in today_5min.iterrows():
