@@ -26,8 +26,16 @@ from config.settings import (
     EV_GATE_LOW, EV_GATE_HIGH, DRIVER_MU_LOW, DRIVER_MU_HIGH,
     EFF_CLUSTER_MIN, MAX_CONTRADICTING, VOTE_C_FLOOR, VOTE_C_SCALE,
     CONTEXT_META_CLUSTERS, EVENT_MIN_EV, EVENT_MIN_CLUSTERS,
-    BAYES_BURN_IN_NEFF,
+    BAYES_BURN_IN_NEFF, CONFIRM_WINDOW_MIN,
 )
+
+
+def _mins(signal_time: str) -> int | None:
+    try:
+        h, m = str(signal_time).split(":")[:2]
+        return int(h) * 60 + int(m)
+    except Exception:
+        return None
 from weights.bayesian import BayesianState
 
 log = logging.getLogger(__name__)
@@ -108,11 +116,18 @@ class GateResult:
 
 
 # ── cluster counting + confidence votes (§2g) ────────────────────────────────
-def count_clusters(signals: dict, driver_direction: int, bayes: BayesianState) -> ClusterResult:
+def count_clusters(signals: dict, driver_direction: int, bayes: BayesianState,
+                   driver_time: str | None = None) -> ClusterResult:
     """
     signals: {strategy_name: Signal}. Returns confirmed/contradicting cluster sets,
     per-confirming-cluster confidence c_i, and eff_binary / eff_weighted.
+
+    Confirmation is CONTEMPORANEOUS: when driver_time is given, price-cluster signals
+    (A/B/C/D/G) count only if they fired within CONFIRM_WINDOW_MIN of the driver — a
+    long at 09:30 does not contradict a short at 14:00. Context/meta clusters (E/F)
+    are day-level and always count. Without driver_time, no time filter (unit tests).
     """
+    dmin = _mins(driver_time) if driver_time else None
     confirmed: set = set()
     contradicting: set = set()
     # strongest shrunk P(win) per cluster, confirming and opposing sides
@@ -125,6 +140,11 @@ def count_clusters(signals: dict, driver_direction: int, bayes: BayesianState) -
         cl = _S2C.get(name)
         if cl is None:
             continue
+        # contemporaneity filter for price clusters (E/F are all-day context)
+        if dmin is not None and cl not in CONTEXT_META_CLUSTERS:
+            smin = _mins(getattr(sig, "signal_time", None))
+            if smin is not None and abs(smin - dmin) > CONFIRM_WINDOW_MIN:
+                continue
         if sig.direction == driver_direction:
             confirmed.add(cl)
             p = bayes.get_posterior(name, driver_direction).p_win()
@@ -170,7 +190,8 @@ def evaluate_entry(driver_signal, signals: dict, bayes: BayesianState,
     ev = post.ev(rr)
     burn_in = post.n_eff < BAYES_BURN_IN_NEFF   # driver still gathering evidence
 
-    clusters = count_clusters(signals, direction, bayes)
+    clusters = count_clusters(signals, direction, bayes,
+                              driver_time=getattr(driver_signal, "signal_time", None))
 
     # event-day raised bars (§ macro filter RAISE_THRESHOLD mode)
     ev_floor = EVENT_MIN_EV if is_event_day else EV_GATE_LOW

@@ -1,42 +1,41 @@
 {
   "_meta": {
-    "source": "plan_phase1.md §2g cluster definitions (A–E)",
-    "note": "Plan names 32 strategies; the running code has 37. The 5 extras are mapped to natural clusters and flagged under _extras so the 32-vs-37 scope choice is reversible. Plan name aliases: VWAP-SD=VWAP-STDDEV, VOL-PROFILE=VPOC.",
+    "source": "plan_phase1.md §2g + plan_phase2.md §5 (48-strategy table across clusters A-G)",
+    "note": "Code carries 53 strategies (plan's 48 + 5 kept extras: ASC-TRI, BULL-FLAG, DBL-BTM, FALL-WEDGE, DAILY-BIAS). Plan name aliases: VWAP-SD=VWAP-STDDEV, VOL-PROFILE=VPOC.",
     "cluster_labels": {
-      "A": "Breakout",
-      "B": "Mean Reversion",
-      "C": "Trend Following",
-      "D": "Price Structure & Candlestick",
-      "E": "Context & Overlay",
-      "F": "empty in Phase 1 (Phase 2)",
-      "G": "empty in Phase 1 (Phase 2)"
+      "A": "Breakout", "B": "Mean Reversion", "C": "Trend Following",
+      "D": "Price Structure & Candlestick", "E": "Context & Overlay",
+      "F": "Meta", "G": "Multi-Timeframe"
     },
     "driver_ineligible_clusters": ["E", "F"],
-    "_extras": {
-      "note": "code-only strategies not in the plan's 32; included so no live signal is stranded",
-      "ASC-TRI": "A", "BULL-FLAG": "A", "DBL-BTM": "D", "FALL-WEDGE": "D", "DAILY-BIAS": "C"
-    }
+    "fixed_vote_clusters": ["E", "F"],
+    "note_fg": "Clusters E, F and G count toward BOTH clusters_confirmed and clusters_contradicting when they fire directionally. E and F are non-driver-eligible advisory votes (c=1.0 fixed); G is driver-eligible and learns confidence."
   },
   "clusters": {
-    "A": ["ORB-15", "ORB-30", "PDH-PDL", "GAP-CONT", "VOL-SPIKE", "SR-BREAK", "FAILED-BO", "ASC-TRI", "BULL-FLAG"],
-    "B": ["VWAP-REV", "RSI-EXT", "BOLLINGER", "GAP-FADE", "STOCHASTIC"],
-    "C": ["EMA-CROSS", "SUPERTREND", "MACD", "DAILY-BIAS"],
-    "D": ["NR7", "FIRST-CANDLE", "PIN-BAR", "INTRADAY-STRUCT", "BEAR-ENGULF", "DBL-TOP", "DESC-TRI", "RISE-WEDGE", "BEAR-FLAG", "DEAD-CAT", "OPEN-WEAK", "DBL-BTM", "FALL-WEDGE"],
-    "E": ["CPR", "CAMARILLA", "ADX-FILTER", "VWAP-STDDEV", "VPOC", "REL-STR"]
+    "A": ["ORB-15", "ORB-30", "PDH-PDL", "GAP-CONT", "VOL-SPIKE", "SR-BREAK", "FAILED-BO", "ASC-TRI", "BULL-FLAG", "PWH-PWL", "TTM-SQUEEZE"],
+    "B": ["VWAP-REV", "RSI-EXT", "BOLLINGER", "GAP-FADE", "STOCHASTIC", "KELTNER-REV", "MFI-DIV", "RSI-DIV", "VOL-PRICE-DIV"],
+    "C": ["EMA-CROSS", "SUPERTREND", "MACD", "DAILY-BIAS", "PARABOLIC-SAR"],
+    "D": ["NR7", "FIRST-CANDLE", "PIN-BAR", "INTRADAY-STRUCT", "BEAR-ENGULF", "DBL-TOP", "DESC-TRI", "RISE-WEDGE", "BEAR-FLAG", "DEAD-CAT", "OPEN-WEAK", "DBL-BTM", "FALL-WEDGE", "THREE-BAR-REV", "FVG"],
+    "E": ["CPR", "CAMARILLA", "ADX-FILTER", "VWAP-STDDEV", "VPOC", "REL-STR", "FIB-RETRACEMENT"],
+    "F": ["PCR", "DAY-SEASONALITY", "PRE-EXPIRY", "BLOCK-DEAL"],
+    "G": ["MTF-15M-ORB", "MTF-15M-EMA"]
   },
   "strategy_to_cluster": {
     "ORB-15": "A", "ORB-30": "A", "PDH-PDL": "A", "GAP-CONT": "A", "VOL-SPIKE": "A",
-    "SR-BREAK": "A", "FAILED-BO": "A", "ASC-TRI": "A", "BULL-FLAG": "A",
+    "SR-BREAK": "A", "FAILED-BO": "A", "ASC-TRI": "A", "BULL-FLAG": "A", "PWH-PWL": "A", "TTM-SQUEEZE": "A",
     "VWAP-REV": "B", "RSI-EXT": "B", "BOLLINGER": "B", "GAP-FADE": "B", "STOCHASTIC": "B",
-    "EMA-CROSS": "C", "SUPERTREND": "C", "MACD": "C", "DAILY-BIAS": "C",
+    "KELTNER-REV": "B", "MFI-DIV": "B", "RSI-DIV": "B", "VOL-PRICE-DIV": "B",
+    "EMA-CROSS": "C", "SUPERTREND": "C", "MACD": "C", "DAILY-BIAS": "C", "PARABOLIC-SAR": "C",
     "NR7": "D", "FIRST-CANDLE": "D", "PIN-BAR": "D", "INTRADAY-STRUCT": "D", "BEAR-ENGULF": "D",
     "DBL-TOP": "D", "DESC-TRI": "D", "RISE-WEDGE": "D", "BEAR-FLAG": "D", "DEAD-CAT": "D",
-    "OPEN-WEAK": "D", "DBL-BTM": "D", "FALL-WEDGE": "D",
-    "CPR": "E", "CAMARILLA": "E", "ADX-FILTER": "E", "VWAP-STDDEV": "E", "VPOC": "E", "REL-STR": "E"
+    "OPEN-WEAK": "D", "DBL-BTM": "D", "FALL-WEDGE": "D", "THREE-BAR-REV": "D", "FVG": "D",
+    "CPR": "E", "CAMARILLA": "E", "ADX-FILTER": "E", "VWAP-STDDEV": "E", "VPOC": "E", "REL-STR": "E", "FIB-RETRACEMENT": "E",
+    "PCR": "F", "DAY-SEASONALITY": "F", "PRE-EXPIRY": "F", "BLOCK-DEAL": "F",
+    "MTF-15M-ORB": "G", "MTF-15M-EMA": "G"
   },
   "high_correlation_pairs": {
-    "_note": "Populated by B0 correlation run (Pearson r > 0.70 -> max_weight cap 1.5). Plan-expected pairs pre-listed; confirmed/updated by the run.",
-    "expected": [["ORB-15", "ORB-30"], ["EMA-CROSS", "SUPERTREND"], ["RSI-EXT", "STOCHASTIC"]],
+    "_note": "Pairs expected r>0.70 (plan §5); one member capped at max_weight 1.5. Confirmed from B0 audit, not assumed.",
+    "expected": [["ORB-15", "ORB-30"], ["BOLLINGER", "KELTNER-REV"], ["EMA-CROSS", "SUPERTREND"], ["RSI-EXT", "STOCHASTIC"], ["RSI-DIV", "VOL-PRICE-DIV"]],
     "confirmed": []
   }
 }

@@ -235,6 +235,9 @@ DRIVER_MU_HIGH = 0.58        #   0->1 over [0.52, 0.58]
 EFF_CLUSTER_MIN     = 1.5    # require eff_weighted >= 1.5 AND eff_binary >= 1.5
 MAX_CONTRADICTING   = 1      # raw contradicting clusters allowed (weighted rule
                              #   logged as [CF_CONTRA] only in v1)
+CONFIRM_WINDOW_MIN  = 30     # confirmation is CONTEMPORANEOUS: only price-cluster
+                             #   signals within this many minutes of the driver's
+                             #   signal time count. Context/meta (E/F) are all-day.
 VOTE_C_FLOOR        = 0.3    # confidence-weight floor per confirming cluster
 VOTE_C_SCALE        = 0.15   # c_i = clip((P_best-0.50)/SCALE, FLOOR, 1.0)
 CONTEXT_META_CLUSTERS = ("E", "F")  # clusters whose vote c_i is fixed at 1.0

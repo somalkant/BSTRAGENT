@@ -1,19 +1,89 @@
 {
   "_meta": {
     "status": "PROVISIONAL",
-    "note": "Inter-cluster signal-correlation matrix C for the dependency penalty eff(v)=(Σv)²/(vᵀCv) (plan §2g). These values are seeded from the plan's own worked examples and cluster semantics — they are POSITIVE-DEFINITE (min eigenvalue 0.39) and reproduce the plan examples exactly: A,C confirm -> eff 1.25 (REJECT); B,D confirm -> eff 1.74 (PASS). Replace with the empirically estimated matrix from scripts/b0_audit.py (training-period <=2018 firings) before the WF run; re-estimated at every WF freeze from training data only.",
-    "clusters": ["A", "B", "C", "D", "E"],
-    "cluster_labels": {
-      "A": "Breakout", "B": "Mean Reversion", "C": "Trend Following",
-      "D": "Price Structure & Candlestick", "E": "Context & Overlay"
-    }
+    "note": "7x7 (A-G) provisional PD matrix extending the Phase 1 5x5 with Meta(F) and Multi-TF(G). F ~independent; G correlates with breakout/trend. Replace with the empirical B0 scan over the 53-strategy library before the WF run.",
+    "clusters": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G"
+    ]
   },
-  "clusters": ["A", "B", "C", "D", "E"],
+  "clusters": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G"
+  ],
   "matrix": [
-    [1.00, 0.10, 0.60, 0.50, 0.30],
-    [0.10, 1.00, 0.10, 0.15, 0.20],
-    [0.60, 0.10, 1.00, 0.45, 0.30],
-    [0.50, 0.15, 0.45, 1.00, 0.30],
-    [0.30, 0.20, 0.30, 0.30, 1.00]
+    [
+      1.0,
+      0.1,
+      0.6,
+      0.5,
+      0.3,
+      0.1,
+      0.45
+    ],
+    [
+      0.1,
+      1.0,
+      0.1,
+      0.15,
+      0.2,
+      0.1,
+      0.1
+    ],
+    [
+      0.6,
+      0.1,
+      1.0,
+      0.45,
+      0.3,
+      0.1,
+      0.45
+    ],
+    [
+      0.5,
+      0.15,
+      0.45,
+      1.0,
+      0.3,
+      0.1,
+      0.3
+    ],
+    [
+      0.3,
+      0.2,
+      0.3,
+      0.3,
+      1.0,
+      0.15,
+      0.2
+    ],
+    [
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.15,
+      1.0,
+      0.1
+    ],
+    [
+      0.45,
+      0.1,
+      0.45,
+      0.3,
+      0.2,
+      0.1,
+      1.0
+    ]
   ]
 }

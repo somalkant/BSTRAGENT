@@ -26,7 +26,8 @@ import pandas as pd
 from tqdm import tqdm
 
 from config.settings import (
-    STOCKS_DIR, CAPITAL, MAX_DAILY_RISK, PAPER_TRADES_FILE, BAYES_STATE_FILE,
+    STOCKS_DIR, CAPITAL, MAX_DAILY_RISK, MAX_RISK_PER_TRADE, ROUND_RISK_TOLERANCE,
+    PAPER_TRADES_FILE, BAYES_STATE_FILE,
 )
 from strategies import ALL_STRATEGIES
 from backtester.bayesian_gate import evaluate_entry, cluster_of
@@ -191,6 +192,14 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
         return None
     pnl = net_pnl(ex.entry_fill, ex.exit_price, shares, direction=direction)
     actual_risk = shares * abs(ex.entry_fill - sig.stop)
+
+    # Realized-risk cap: the next-bar-open fill can gap far from the signal-level stop
+    # (e.g. a squeeze release sized on a tiny stop), realizing more risk than intended.
+    # The hard 0.5%/trade cap holds on REALIZED risk — skip a fill that breaches it.
+    if actual_risk > MAX_RISK_PER_TRADE * CAPITAL + 1e-6:
+        log.info(f"[RISK_CAP_SKIP {cand.symbol} {sig.strategy} fill-gap "
+                 f"realized={actual_risk / CAPITAL * 100:.2f}%]")
+        return None
 
     # driver-only posterior update
     bayes.update(sig.strategy, direction, pnl_rs=pnl, risk_amount=actual_risk, rr=sig.rr)
