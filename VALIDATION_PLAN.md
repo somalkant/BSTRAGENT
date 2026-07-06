@@ -22,6 +22,10 @@ All 12 tests must show **PASS**. A single FAIL → do NOT start the agent that d
 | B4 | No intraday price monitoring after entry | Agent went silent from entry to exit — no 5-min P&L logs | `live/agent.py` (_log_trade_monitor) | **Fixed 2026-06-16** |
 | B5 | Stale `.pyc` causes old code to run on restart | Python loads compiled bytecode from `__pycache__` if it exists | Pre-session checklist | **Mitigation added** |
 | B6 | Liquidity filter (50 Cr) only takes effect after agent restart | `_LIQUIDITY_CR` computed at import time | Settings change requires restart | **By design — document** |
+| B7 | Live SHORT has no per-symbol F&O eligibility gate | `live/live_engine.py` only checks the global `SHORT_ENABLED` flag. `backtester/universe.py::fno_eligible_short()` + `config/fno_membership.json` (a liquidity-proxy approximation built 2026-07-05, see `scripts/build_fno_proxy.py`) exist ONLY on the backtest path — confirmed zero references in `live/` or `brokers/`. Live can currently recommend a SHORT on a non-F&O stock with no warning. | Not fixed | **Open — must close before live shorting** |
+| B8 | No broker order-placement / rejection handling exists | `brokers/base.py` defines only `authenticate()` / `get_credentials()` / `get_api_classes()` — no `place_order()` anywhere in the codebase. `live/agent.py` only writes to `paper_logger.py`; no real order is ever submitted, so there is nothing to catch a broker rejection. `plan_phase1.md`'s `[BROKER_REJECTED] log + skip, no retry` behavior is a **design note for future Phase 4a work**, not implemented code. | Not built (paper-trading only, by design for current phase) | **Open — required before "Start real money" milestone** |
+| B9 | Backtest `simulate_execution()` never re-anchored stop/target to the actual (slipped) fill — could mislabel exits and invert PnL sign | `stop`/`target` used the raw signal-time absolute levels unchanged. When slippage/impact (`shares/bar_volume` participation) moved `entry_fill` far enough, the fill could land on the wrong side of the original target, so the exit-walk could tag a losing trade `TARGET` (found via a real DLF 2019-01-01 SHORT: entry slipped from 181.50 to 178.33 on a thin bar, later "hit" the stale 180.465 target level and was booked as `-3719, TARGET` — actually a loss). Same class of bug as B2/B3, just never ported from `live_engine.py` to the backtest engine. | `backtester/execution.py` — re-anchors stop/target to `entry_fill` preserving the signal's original R-distances; `tests/test_execution.py` updated to match | **Fixed 2026-07-05** — re-run any existing walk-forward checkpoints, their results predate this fix |
+| B10 | Slippage/impact formula could imply a fill price that never actually traded in that bar | `entry_fill`/`exit_price` were computed as `open × (1 ± participation-based slip)` with no bound — on a thin bar (large order vs small bar volume) this can land outside the bar's own `[low, high]`. Same DLF trade: the 11:20 bar traded 181.35-181.75 the whole 5 minutes, but the formula implied a fill of 178.33 — ₹3.02 *below* the bar's own low, physically impossible. After B9's fix this was still producing an inflated loss (-5771, correctly labeled STOP but off a fill that couldn't have happened); after this fix the same trade fills at 181.35 (the bar's own low, the worst real price) and comes out **+260, a realistic small win**. | `backtester/execution.py` — added `_clamp()`, applied to every entry/exit fill | **Fixed 2026-07-05** — same re-run note as B9 |
 
 ---
 
@@ -246,9 +250,9 @@ V3  Live-Price Entry Distances ......... FAIL
 
 | Milestone | Condition |
 |-----------|-----------|
-| Paper trading | Currently running — all bugs listed above fixed |
+| Paper trading | Currently running — B1-B6 fixed (B7/B8 don't block paper trading, no real orders are placed) |
 | Consider real money | 30+ paper trades, win rate ≥ 45%, avg RR ≥ 1.8, all 12 validation tests green daily |
-| Start real money | Begin with 25% of planned capital (Rs 2.5L), 1 trade/day, max Rs 5k loss |
+| Start real money | **B7 and B8 closed** (live F&O short gate + broker order-placement/rejection handling built) + begin with 25% of planned capital (Rs 2.5L), 1 trade/day, max Rs 5k loss |
 | Scale up | After 20 real trades with win rate ≥ 45% |
 
 The 30-trade paper threshold is important — with 1 trade/day that's ~6 weeks. Anything less

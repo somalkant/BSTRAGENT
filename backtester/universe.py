@@ -84,14 +84,24 @@ _SECTOR  = _load_optional(SECTOR_MAP_FILE, "sector")
 _ASM_GSM = _load_optional(ASM_GSM_HISTORY_FILE, "asm_gsm")
 
 
+def _half_year_key(trade_date) -> str:
+    s = str(trade_date)
+    month = int(s[5:7])
+    return f"{s[:4]}-H{1 if month <= 6 else 2}"
+
+
 def fno_eligible_short(symbol: str, trade_date) -> bool:
     """
     SHORT candidates are F&O-only. Without the PIT F&O file we approximate by allowing
-    the short (Phase-1), flagged. With the file, membership is queried as-of the date.
+    the short (Phase-1), flagged. With the file, membership is queried as-of the date,
+    falling back from exact-date keys to half-year/year buckets (the liquidity-proxy
+    builder in scripts/build_fno_proxy.py writes half-year granularity, not daily).
     """
     if _FNO is None:
         return True
-    members = _FNO.get(str(trade_date)) or _FNO.get("_latest") or []
+    key = str(trade_date)
+    members = (_FNO.get(key) or _FNO.get(_half_year_key(trade_date))
+               or _FNO.get(key[:4]) or _FNO.get("_latest") or [])
     return symbol in members
 
 

@@ -8,7 +8,7 @@ Signal fires when today's intraday price closes below the lower trendline.
 """
 import numpy as np
 import pandas as pd
-from strategies.base import BaseStrategy, Signal
+from strategies.base import BaseStrategy, Signal, daily_ohlcv
 
 
 class RisingWedge(BaseStrategy):
@@ -79,10 +79,7 @@ class RisingWedge(BaseStrategy):
 
     @staticmethod
     def _daily(history_5min, n):
-        return (history_5min.groupby(history_5min["datetime"].dt.date)
-                .agg(open=("open","first"), high=("high","max"),
-                     low=("low","min"), close=("close","last"))
-                .tail(n))
+        return daily_ohlcv(history_5min)[["open", "high", "low", "close"]].tail(n)
 
     def _find_breakdown(self, today_5min, level):
         for _, c in today_5min.iterrows():

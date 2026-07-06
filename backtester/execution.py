@@ -7,6 +7,11 @@ Replaces the old signal-candle-close fill (look-ahead) with:
           bar OPEN (worse than the stop), not the stop price
   EOD square-off at 15:10 (frozen)
 
+Every computed fill (entry or exit) is clamped to that bar's own [low, high] — the
+slippage/impact formula is a participation-rate estimate, not a real order book, and
+on a thin bar (large order vs small bar volume) it can otherwise imply a price that
+never actually traded that bar.
+
 Every trade — winners included — records MFE_R / MAE_R (from 5-min bar extremes),
 bars_to_exit, exit_reason ∈ {TARGET, STOP, EOD, CIRCUIT_TRAP}, settings_hash.
 The full intra-bar path is unknowable, so excursions use bar highs/lows — same
@@ -44,8 +49,11 @@ class ExecResult:
 
 
 def _slippage_frac(shares: int, bar_volume: float) -> float:
+    """Base spread cost + a square-root market-impact term (see SLIPPAGE_IMPACT_K).
+    Square-root, not linear: 10x the participation rate costs ~sqrt(10)=3.2x the
+    impact, not 10x -- matches how real market impact scales, not a straight ratio."""
     part = (shares / bar_volume) if (shares and bar_volume and bar_volume > 0) else 0.0
-    return _SLIP_BASE + SLIPPAGE_IMPACT_K * part
+    return _SLIP_BASE + SLIPPAGE_IMPACT_K * (part ** 0.5)
 
 
 def _parse_time(s: str, default=(9, 15)) -> dtime:
@@ -56,13 +64,27 @@ def _parse_time(s: str, default=(9, 15)) -> dtime:
         return dtime(*default)
 
 
+def _clamp(price: float, lo: float, hi: float) -> float:
+    """No fill can occur outside the bar's own traded range — slippage/impact can
+    push a raw formula price past what actually traded, which is not a real fill."""
+    return min(max(price, lo), hi)
+
+
 def simulate_execution(signal, today_5min: pd.DataFrame, shares: int = 0) -> ExecResult:
     """
     signal: has .direction (+1/-1), .entry, .target, .stop, .signal_time.
     Fills at the next bar's open; walks bars to the first of target/stop/EOD.
+
+    stop/target are re-anchored to the actual fill, preserving the signal's original
+    R-distances: slippage/impact can move entry_fill far enough from signal.entry that
+    the un-adjusted absolute levels end up on the wrong side of the real fill, which
+    mislabels the exit and inverts the PnL sign (a "TARGET" tag that is actually a
+    loss). Mirrors the fix already applied to live_engine.py for the same class of
+    bug (VALIDATION_PLAN.md B2/B3). The realized-risk cap in bayesian_engine.py
+    compares entry_fill against the ORIGINAL sig.stop directly (unaffected by this
+    re-anchoring) — that check is a deliberate, separate gate for fill-gap blowouts.
     """
     direction = signal.direction
-    target, stop = signal.target, signal.stop
     sh = settings_hash()
 
     sig_dt = _parse_time(signal.signal_time or "09:15")
@@ -79,14 +101,24 @@ def simulate_execution(signal, today_5min: pd.DataFrame, shares: int = 0) -> Exe
         return ExecResult(False, 0.0, "", 0.0, "", "NO_FILL", 0, 0.0, 0.0, sh)
 
     ebar = bars.iloc[entry_idx]
+    e_lo, e_hi = float(ebar["low"]), float(ebar["high"])
     slip = _slippage_frac(shares, float(ebar["volume"]))
-    # buyer pays up, seller receives less
-    entry_fill = float(ebar["open"]) * (1 + slip) if direction > 0 else float(ebar["open"]) * (1 - slip)
+    # buyer pays up, seller receives less — but never outside what the bar actually traded
+    raw_fill = float(ebar["open"]) * (1 + slip) if direction > 0 else float(ebar["open"]) * (1 - slip)
+    entry_fill = _clamp(raw_fill, e_lo, e_hi)
     entry_time = pd.Timestamp(ebar["datetime"]).strftime("%H:%M")
 
-    risk_per_share = abs(entry_fill - stop)
-    if risk_per_share <= 0:
+    # re-anchor stop/target to the real fill, preserving the signal's original R-distances
+    stop_dist = abs(signal.entry - signal.stop)
+    target_dist = abs(signal.target - signal.entry)
+    if stop_dist <= 0 or target_dist <= 0:
         return ExecResult(False, entry_fill, entry_time, 0.0, "", "NO_FILL", 0, 0.0, 0.0, sh)
+    if direction > 0:
+        stop, target = entry_fill - stop_dist, entry_fill + target_dist
+    else:
+        stop, target = entry_fill + stop_dist, entry_fill - target_dist
+
+    risk_per_share = stop_dist   # == abs(entry_fill - stop) by construction now
 
     best = 0.0   # best favourable move (price units)
     worst = 0.0  # worst adverse move (price units)
@@ -113,27 +145,30 @@ def simulate_execution(signal, today_5min: pd.DataFrame, shares: int = 0) -> Exe
 
         # EOD square-off (exits run to the frozen 15:10)
         if t >= eod:
-            exit_price = op * (1 - eslip) if direction > 0 else op * (1 + eslip)
+            raw_exit = op * (1 - eslip) if direction > 0 else op * (1 + eslip)
+            exit_price = _clamp(raw_exit, lo, hi)
             exit_reason, exit_time = "EOD", t.strftime("%H:%M")
             break
 
         if direction > 0:
             gap_through = op <= stop            # opened below the stop -> gap-through
             if lo <= stop:
-                exit_price = (op if gap_through else stop) * (1 - eslip)
+                raw_exit = (op if gap_through else stop) * (1 - eslip)
+                exit_price = _clamp(raw_exit, lo, hi)
                 exit_reason = "CIRCUIT_TRAP" if gap_through and op < stop * 0.9 else "STOP"
                 exit_time = t.strftime("%H:%M"); break
             if hi >= target:
-                exit_price = target * (1 - eslip)
+                exit_price = _clamp(target * (1 - eslip), lo, hi)
                 exit_reason, exit_time = "TARGET", t.strftime("%H:%M"); break
         else:
             gap_through = op >= stop
             if hi >= stop:
-                exit_price = (op if gap_through else stop) * (1 + eslip)
+                raw_exit = (op if gap_through else stop) * (1 + eslip)
+                exit_price = _clamp(raw_exit, lo, hi)
                 exit_reason = "CIRCUIT_TRAP" if gap_through and op > stop * 1.1 else "STOP"
                 exit_time = t.strftime("%H:%M"); break
             if lo <= target:
-                exit_price = target * (1 + eslip)
+                exit_price = _clamp(target * (1 + eslip), lo, hi)
                 exit_reason, exit_time = "TARGET", t.strftime("%H:%M"); break
 
     mfe_r = round(best / risk_per_share, 3)

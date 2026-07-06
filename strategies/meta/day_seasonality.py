@@ -4,6 +4,7 @@ orthogonal to price signals."""
 from __future__ import annotations
 
 import pandas as pd
+from strategies.base import daily_ohlcv
 from strategies.meta._meta_base import MetaStrategy
 
 THRESH = 0.003     # avg same-weekday return magnitude to vote
@@ -15,8 +16,8 @@ class DaySeasonality(MetaStrategy):
     def generate_signal(self, today_5min, history_5min, prev_day, nifty_today, trade_date):
         if history_5min is None or history_5min.empty:
             return self._no_signal()
-        h = history_5min.copy()
-        daily = h.groupby(h["datetime"].dt.date).agg(op=("open", "first"), cl=("close", "last"))
+        daily = daily_ohlcv(history_5min)[["open", "close"]].rename(
+            columns={"open": "op", "close": "cl"})
         daily["ret"] = (daily["cl"] - daily["op"]) / daily["op"]
         daily["dow"] = [d.weekday() for d in daily.index]
         same = daily[daily["dow"] == trade_date.weekday()]["ret"].tail(8)

@@ -1,6 +1,6 @@
 """Strategy 14: NR7 / Inside Day — narrow range day leading to explosive move."""
 import pandas as pd
-from strategies.base import BaseStrategy, Signal
+from strategies.base import BaseStrategy, Signal, daily_ohlcv
 
 
 class NR7InsideDay(BaseStrategy):
@@ -12,9 +12,7 @@ class NR7InsideDay(BaseStrategy):
             return self._no_signal()
 
         # Build daily OHLC from history
-        daily = (history_5min.groupby(history_5min["datetime"].dt.date)
-                 .agg(high=("high","max"), low=("low","min"), close=("close","last"))
-                 .tail(7))
+        daily = daily_ohlcv(history_5min)[["high", "low", "close"]].tail(7)
         if len(daily) < 7:
             return self._no_signal()
 

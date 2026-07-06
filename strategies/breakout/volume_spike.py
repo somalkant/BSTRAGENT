@@ -1,7 +1,7 @@
 """Strategy 5: Volume Spike Breakout — price at resistance + volume > 2× 20-day avg."""
 import pandas as pd
 import numpy as np
-from strategies.base import BaseStrategy, Signal
+from strategies.base import BaseStrategy, Signal, daily_ohlcv
 
 
 class VolumeSpikeBreakout(BaseStrategy):
@@ -15,15 +15,13 @@ class VolumeSpikeBreakout(BaseStrategy):
             return self._no_signal()
 
         # Daily avg volume from recent history
-        daily_vol = (history_5min.groupby(history_5min["datetime"].dt.date)["volume"]
-                     .sum().tail(self.LOOKBACK))
+        daily_vol = daily_ohlcv(history_5min)["volume"].tail(self.LOOKBACK)
         if len(daily_vol) < 5:
             return self._no_signal()
         avg_daily_vol = daily_vol.mean()
 
         # 20-day resistance = highest high in last 20 trading days
-        resistance = (history_5min.groupby(history_5min["datetime"].dt.date)["high"]
-                      .max().tail(self.LOOKBACK).max())
+        resistance = daily_ohlcv(history_5min)["high"].tail(self.LOOKBACK).max()
 
         today_vol_so_far = 0
         for _, c in today_5min.iterrows():
