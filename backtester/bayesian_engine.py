@@ -159,15 +159,31 @@ def _trailing_median(history: pd.DataFrame) -> float:
     return float(daily.median()) if not daily.empty else 0.0
 
 
-def _breadth(all_data, trade_date, hhmm: str) -> float | None:
-    """Fraction of scanned stocks up (open -> price at hhmm). Lookahead-free (bars <= hhmm)."""
-    up = tot = 0
-    for df in all_data.values():
-        t = df[df["datetime"].dt.date == trade_date]
-        t = t[t["datetime"].dt.strftime("%H:%M") <= hhmm]
-        if len(t) < 1:
+def _build_breadth_base(today_frames: dict) -> dict:
+    """Precompute, once per day, each stock's (open, minute-of-day array, close array) from
+    its ALREADY-SLICED per-day frame. This is the fix for the breadth hot-path: previously
+    _breadth re-filtered every stock's full multi-year frame (df.datetime.dt.date == date)
+    and ran .dt.strftime on every distinct signal-time — O(stocks x full_frame x times/day),
+    which exploded on the full universe. Now breadth is a numpy lookup on ~75-row slices."""
+    base = {}
+    for sym, t in today_frames.items():
+        if t is None or len(t) < 1:
             continue
-        op = float(t.iloc[0]["open"]); px = float(t.iloc[-1]["close"])
+        dt = t["datetime"].dt
+        base[sym] = (float(t.iloc[0]["open"]),
+                     (dt.hour.to_numpy() * 60 + dt.minute.to_numpy()),
+                     t["close"].to_numpy())
+    return base
+
+
+def _breadth(breadth_base: dict, mins_cut: int) -> float | None:
+    """Advancer fraction as of mins_cut (minutes since midnight). Lookahead-free."""
+    up = tot = 0
+    for op, mins, closes in breadth_base.values():
+        mask = mins <= mins_cut
+        if not mask.any():
+            continue
+        px = float(closes[mask][-1])
         if op > 0:
             tot += 1
             up += 1 if px > op else 0
@@ -191,13 +207,18 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
     long_cands: list[Candidate] = []
     short_cands: list[Candidate] = []
 
-    # per-day breadth memo: _breadth(all_data, trade_date, hhmm) depends only on the
-    # timestamp, never on symbol, so repeated lookups at the same hhmm across stocks
-    # (and across the long/short scans) are free once cached
+    # slice each stock's per-day frame ONCE (reused for signals AND breadth); avoids the
+    # full multi-year `.dt.date == trade_date` filter being re-run inside _breadth on
+    # every distinct signal-time -- the cause of the recent slowdown at full-universe scale
+    today_frames = {sym: _eng._get_today(df, trade_date) for sym, df in all_data.items()}
+    breadth_base = _build_breadth_base(today_frames)
+
+    # per-day breadth memo keyed by timestamp (symbol-independent) -> free repeat lookups
     breadth_cache: dict[str, float | None] = {}
     def get_breadth(hhmm: str) -> float | None:
         if hhmm not in breadth_cache:
-            breadth_cache[hhmm] = _breadth(all_data, trade_date, hhmm)
+            m = _mins(hhmm)
+            breadth_cache[hhmm] = _breadth(breadth_base, m if m is not None else 555)
         return breadth_cache[hhmm]
 
     # computed here (not after selection, as before) so liquidity can gate ELIGIBILITY,
@@ -205,7 +226,7 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
     turnover = _eng._estimate_turnover(all_data, trade_date)
 
     for symbol, df in all_data.items():
-        today = _eng._get_today(df, trade_date)
+        today = today_frames[symbol]
         if today.empty or len(today) < 10:
             continue
         history = df[df["datetime"].dt.date < trade_date]
