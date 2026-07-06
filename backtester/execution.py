@@ -76,13 +76,19 @@ def simulate_execution(signal, today_5min: pd.DataFrame, shares: int = 0) -> Exe
     Fills at the next bar's open; walks bars to the first of target/stop/EOD.
 
     stop/target are re-anchored to the actual fill, preserving the signal's original
-    R-distances: slippage/impact can move entry_fill far enough from signal.entry that
-    the un-adjusted absolute levels end up on the wrong side of the real fill, which
-    mislabels the exit and inverts the PnL sign (a "TARGET" tag that is actually a
-    loss). Mirrors the fix already applied to live_engine.py for the same class of
-    bug (VALIDATION_PLAN.md B2/B3). The realized-risk cap in bayesian_engine.py
-    compares entry_fill against the ORIGINAL sig.stop directly (unaffected by this
-    re-anchoring) — that check is a deliberate, separate gate for fill-gap blowouts.
+    R-distances: entry_fill (next-bar-open, or slippage/impact when those are nonzero)
+    can move far enough from signal.entry that the un-adjusted absolute levels end up
+    on the wrong side of the real fill, which mislabels the exit and inverts the PnL
+    sign (a "TARGET" tag that is actually a loss). Mirrors the fix already applied to
+    live_engine.py for the same class of bug (VALIDATION_PLAN.md B2/B3).
+
+    bayesian_engine.py deliberately computes TWO different risk bases from this
+    result: a fill-gap safety check compares entry_fill against the ORIGINAL sig.stop
+    (unaffected by this re-anchoring, to catch an entry that already gapped into
+    trouble), while the risk basis used for Bayesian learning/reporting uses the
+    signal's own geometric per-share risk (same basis as risk_per_share/mfe_r/mae_r
+    below) — using the fill-gap distance there instead would make the posteriors
+    learn from incidental signal-to-fill price drift, not genuine trade quality.
     """
     direction = signal.direction
     sh = settings_hash()

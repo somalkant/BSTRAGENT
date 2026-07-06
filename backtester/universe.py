@@ -20,7 +20,7 @@ import json
 import logging
 
 from config.settings import (
-    STOCKS_DIR, FNO_MEMBERSHIP_FILE, SECTOR_MAP_FILE, ASM_GSM_HISTORY_FILE,
+    STOCKS_DIR, FNO_MEMBERSHIP_FILE, SECTOR_MAP_FILE, ASM_GSM_HISTORY_FILE, MIN_ADV_RS,
 )
 
 log = logging.getLogger(__name__)
@@ -114,6 +114,15 @@ def long_eligible(symbol: str, trade_date) -> bool:
         return True
     return not (flags.get("t2t") or flags.get("be") or
                 (flags.get("gsm_stage", 0) or 0) >= 2 or flags.get("asm_longterm"))
+
+
+def liquidity_eligible(adv_turnover_rs: float) -> bool:
+    """A signal is only driver-eligible if its trailing 20-day ADV clears MIN_ADV_RS --
+    otherwise it can win the day's single long/short slot via chronological-first
+    selection and then get sized down to a token position, wasting that slot. Distinct
+    from LIQUIDITY_ADV_CAP (bayesian_sizer.py), which only shrinks an already-chosen
+    trade's size; this gates whether the stock is even considered in the first place."""
+    return adv_turnover_rs >= MIN_ADV_RS
 
 
 def sector_of(symbol: str, trade_date=None) -> str | None:

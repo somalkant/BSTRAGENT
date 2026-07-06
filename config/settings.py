@@ -271,23 +271,32 @@ SEBI_MARGIN_FLOOR   = 0.20       # peak-margin floor: margin_rate = max(VaR+ELM,
 LIQUIDITY_ADV_CAP   = 0.01       # position notional <= 1% of 20-day avg turnover
 ROUND_RISK_TOLERANCE = 0.25      # skip if |actual-intended risk|/intended > 25%
 
+# Minimum 20-day ADV (trailing, causal) for a signal to even be ELIGIBLE as a driver --
+# distinct from LIQUIDITY_ADV_CAP above, which only shrinks the SIZE of an already-chosen
+# trade. Without this floor, a thin stock can still win the day's single long/short slot
+# via chronological-first selection and then get sized down to a token position -- wasting
+# the slot. At Rs 50 Cr ADV, 1% = Rs 50L max notional, far above the 5L direction capital,
+# so liquidity is essentially never the binding constraint once a stock clears this floor.
+# Verified against local data: ~103/370 stocks clear this in 2018, ~291/471 in 2024 --
+# plenty of eligible names even in the thinner early years.
+MIN_ADV_RS          = 50_00_00_000   # Rs 50 Crore trailing 20-day avg daily turnover
+
 # ── 2i. Locked-stack loss halts (Phase 3 B5 owns approval; anchors pinned here)
 DAILY_HALT_MULT   = 1.2          # daily halt = 1.2x MAX_DAILY_RISK by construction
 
 # ── B2. Execution realism (baseline; full simulator in Phase 3 B5b) ──────────
 FILL_MODEL          = "NEXT_BAR_OPEN"   # never signal-candle close (look-ahead)
-SLIPPAGE_BPS        = 5.0        # base slippage each side (bps)
-# impact = SLIPPAGE_IMPACT_K * sqrt(participation) -- square-root, not linear. Real
-# market-impact models (Almgren-Chriss and standard practitioner rules) consistently
-# use a square-root relationship between participation rate and price impact, not a
-# 1:1 linear one -- being 10x more of a bar's volume costs ~sqrt(10)=3.2x more impact,
-# not 10x more. The previous K=1.0 LINEAR formula overstated impact by roughly 10-30x
-# at the 1-10% participation rates actually seen in this backtest (e.g. a trade at 1.7%
-# participation was charged ~1.75% slippage; a calibrated estimate is closer to ~0.13%).
-# K=0.01 targets ~10bps impact at 1% bar-participation, ~32bps at 10% -- in line with
-# commonly-cited intraday impact heuristics, not empirically fitted to NSE tick data
-# (which isn't available to calibrate against here).
-SLIPPAGE_IMPACT_K   = 0.01       # impact term coefficient x sqrt(participation rate)
+# Slippage/market-impact is deliberately OFF during backtest training (both 0): the
+# Bayesian posteriors should learn purely from whether a strategy calls direction and
+# timing correctly (signal's own entry/target/stop, next-bar-open fill, bar-range
+# clamping and gap-through-stop realism all still apply -- those are "did this price
+# actually trade," not a cost). Slippage is real-world friction with no principled way
+# to calibrate a formula against without live order-book data, so it is validated
+# empirically in live paper trading instead, not baked into what the model learns from.
+# Broker costs (brokerage/STT/exchange/GST/stamp, cost_model.py) stay ON -- those are
+# fixed, published rates, not something paper trading would reveal new information about.
+SLIPPAGE_BPS        = 0.0        # base slippage each side (bps) -- off for training, see above
+SLIPPAGE_IMPACT_K   = 0.0        # impact term coefficient x sqrt(participation rate) -- off for training
 
 # ── B2. Time filters ─────────────────────────────────────────────────────────
 LAST_ENTRY_TIME     = time(14, 30)   # no NEW entries at/after 14:30

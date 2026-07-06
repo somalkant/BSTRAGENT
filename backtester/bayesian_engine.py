@@ -8,9 +8,10 @@ Per day:
   0. Macro event gate (SKIP / RAISE_THRESHOLD)
   1. Per stock: data-integrity gate -> generate 37 signals -> first-candle block ->
      last-entry cutoff
-  2. Per direction, walk driver-eligible signals (cluster not in E/F) in signal_time
-     order and take the FIRST time-bucket that passes the four-gate entry decision
-     (bayesian_gate) -- not the whole day's best-EV signal, which would be look-ahead
+  2. Per direction, walk driver-eligible signals (cluster not in E/F, liquidity-eligible
+     stocks only -- MIN_ADV_RS) in signal_time order and take the FIRST time-bucket that
+     passes the four-gate entry decision (bayesian_gate) -- not the whole day's best-EV
+     signal, which would be look-ahead
   3. Across stocks take whichever LONG passes earliest and whichever SHORT passes
      earliest (never the best of the day in hindsight)
   4. Size to the full per-direction daily risk budget (bayesian_sizer) subject to
@@ -38,7 +39,9 @@ from backtester.bayesian_gate import evaluate_entry, cluster_of, _mins
 from backtester.bayesian_sizer import size_trade, sectors_ok
 from backtester.execution import simulate_execution
 from backtester.filters import first_candle_filter, after_last_entry, event_day, event_mode
-from backtester.universe import data_integrity_ok, fno_eligible_short, long_eligible, sector_of
+from backtester.universe import (
+    data_integrity_ok, fno_eligible_short, long_eligible, liquidity_eligible, sector_of,
+)
 from backtester.exec_quality import compute as exec_compute
 from backtester.context_tags import compute_tags, context_mult, signal_label, time_bucket
 from backtester.cost_model import net_pnl
@@ -197,6 +200,10 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
             breadth_cache[hhmm] = _breadth(all_data, trade_date, hhmm)
         return breadth_cache[hhmm]
 
+    # computed here (not after selection, as before) so liquidity can gate ELIGIBILITY,
+    # not just shrink the size of an already-chosen trade -- trailing 20-day, causal
+    turnover = _eng._estimate_turnover(all_data, trade_date)
+
     for symbol, df in all_data.items():
         today = _eng._get_today(df, trade_date)
         if today.empty or len(today) < 10:
@@ -224,14 +231,21 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
         signals = {n: s for n, s in signals.items()
                    if not (s and s.direction != 0 and s.signal_time and after_last_entry(s.signal_time))}
 
+        adv_rs = turnover.get(symbol, 0.0) * 1e7
+        liquid = liquidity_eligible(adv_rs)
+
         long_d = _first_chronological_pass(symbol, signals, decision_bayes, +1, ctx, prev, today, get_breadth)
-        if long_d and long_eligible(symbol, trade_date):
+        if long_d and liquid and long_eligible(symbol, trade_date):
             long_cands.append(long_d)
         short_d = _first_chronological_pass(symbol, signals, decision_bayes, -1, ctx, prev, today, get_breadth)
         if short_d:
+            # SHORT_UNIVERSE_COUNTER measures F&O-eligibility impact specifically --
+            # scoped to any qualifying short signal, independent of the liquidity gate
             SHORT_UNIVERSE_COUNTER["gated_shorts"] += 1
-            if fno_eligible_short(symbol, trade_date):
+            if liquid and fno_eligible_short(symbol, trade_date):
                 short_cands.append(short_d)
+            elif not liquid:
+                pass   # illiquid -- excluded, but not counted against the F&O metric
             else:
                 SHORT_UNIVERSE_COUNTER["outside_fno"] += 1
                 log.debug(f"[SHORT_OUTSIDE_FNO {symbol} {short_d.driver.strategy}]")
@@ -239,7 +253,6 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
     best_long = _earliest(long_cands)
     best_short = _earliest(short_cands)
 
-    turnover = _eng._estimate_turnover(all_data, trade_date)
     recs = []
     # chronological, not disc_ev-first: whichever side's trade was actually knowable
     # first in real time claims sector precedence first (today's disc_ev-first order
@@ -303,21 +316,33 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
     if not ex.filled:
         return None
     pnl = net_pnl(ex.entry_fill, ex.exit_price, shares, direction=direction)
-    actual_risk = shares * abs(ex.entry_fill - sig.stop)
 
-    # Realized-risk cap: the next-bar-open fill can gap far from the signal-level stop
-    # (e.g. a squeeze release sized on a tiny stop), realizing more risk than intended.
-    # The hard per-direction daily budget holds on REALIZED risk too — skip a fill
-    # that breaches it (burn-in intends far less than this, so it rarely binds there).
-    if actual_risk > DAILY_RISK_CAP_RS + 1e-6:
+    # Two DIFFERENT risk bases, deliberately kept separate:
+    #  - fill_gap_risk: distance from the ACTUAL fill to the ORIGINAL signal-level stop.
+    #    Only meaningful as a one-off safety check for "did the entry itself already gap
+    #    into trouble" (e.g. a squeeze release sized on a tiny stop) -- not a stable R-unit.
+    #  - realized_risk: the signal's own geometric per-share risk (preserved through
+    #    execution.py's re-anchoring, same basis as risk_per_share/mfe_r/mae_r there).
+    #    This is what a trade's R-multiple actually means, and what learning/reporting
+    #    must use -- using fill_gap_risk here instead would make the Bayesian posteriors
+    #    learn from "how far did price happen to drift between signal and fill," which is
+    #    noise unrelated to whether the strategy called direction correctly.
+    fill_gap_risk = shares * abs(ex.entry_fill - sig.stop)
+    realized_risk = shares * abs(sig.entry - sig.stop)
+
+    # Realized-risk cap: the next-bar-open fill can gap far from the signal-level stop,
+    # realizing more risk than intended. The hard per-direction daily budget holds on
+    # this fill-gap risk too — skip a fill that breaches it (burn-in intends far less
+    # than this, so it rarely binds there).
+    if fill_gap_risk > DAILY_RISK_CAP_RS + 1e-6:
         log.info(f"[RISK_CAP_SKIP {cand.symbol} {sig.strategy} fill-gap "
-                 f"realized=Rs{actual_risk:,.0f}]")
+                 f"realized=Rs{fill_gap_risk:,.0f}]")
         return None
 
     # settled trade -> compute the [0,1] evidence score, update driver posterior (with
     # regime tag) and the per-stock behavior prior (B3b), and run change-point detection
-    score, _, _ = bayes.score_from_pnl(pnl, actual_risk, sig.rr)
-    bayes.update(sig.strategy, direction, pnl_rs=pnl, risk_amount=actual_risk, rr=sig.rr,
+    score, _, _ = bayes.score_from_pnl(pnl, realized_risk, sig.rr)
+    bayes.update(sig.strategy, direction, pnl_rs=pnl, risk_amount=realized_risk, rr=sig.rr,
                  regime=ctx.regime)
     dcluster = cluster_of(sig.strategy)
     stock_type.update(cand.symbol, dcluster, score)
@@ -357,8 +382,8 @@ def _build_trade(cand: Candidate, all_data, trade_date, bayes, turnover,
         "day_type": tags.day_type, "gap_pct": tags.gap_pct, "breadth": tags.breadth,
         "sector_rs": tags.sector_rs, "daily_trend": tags.daily_trend, "time_bucket": tags.time_bucket,
         "signal_label": label,
-        "intended_risk": r.intended_risk, "actual_risk": round(actual_risk, 2),
-        "risk_pct": round(actual_risk / direction_capital * 100, 4),
+        "intended_risk": r.intended_risk, "actual_risk": round(realized_risk, 2),
+        "risk_pct": round(realized_risk / direction_capital * 100, 4),
         "exit_time": ex.exit_time, "exit_price": ex.exit_price, "exit_reason": ex.exit_reason,
         "mfe_r": ex.mfe_r, "mae_r": ex.mae_r, "bars_to_exit": ex.bars_to_exit,
         "settings_hash": ex.settings_hash, "pnl_rs": round(pnl, 2),

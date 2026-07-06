@@ -9,8 +9,9 @@ from datetime import date
 
 from backtester.universe import (
     universe_for_year, in_universe, overnight_gap, data_integrity_ok,
-    fno_eligible_short, long_eligible, sector_of,
+    fno_eligible_short, long_eligible, liquidity_eligible, sector_of,
 )
+from config.settings import MIN_ADV_RS
 
 
 def test_folder_presence_pit_universe():
@@ -40,3 +41,12 @@ def test_eligibility_graceful_fallback_when_files_absent():
     assert fno_eligible_short("RELIANCE", date(2018, 1, 1)) is True
     assert long_eligible("RELIANCE", date(2018, 1, 1)) is True
     assert sector_of("RELIANCE") is None       # sector rule skipped when map absent
+
+
+def test_liquidity_eligible_floor():
+    # at MIN_ADV_RS (Rs 50 Cr), 1% ADV cap = Rs 50L -- far above the 5L direction
+    # capital, so liquidity is essentially never the binding constraint once eligible
+    assert liquidity_eligible(MIN_ADV_RS) is True
+    assert liquidity_eligible(MIN_ADV_RS - 1) is False
+    assert liquidity_eligible(0.0) is False
+    assert liquidity_eligible(MIN_ADV_RS * 10) is True

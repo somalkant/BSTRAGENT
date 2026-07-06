@@ -143,6 +143,9 @@ def test_short_universe_counter_increments_once_per_qualifying_short(monkeypatch
     monkeypatch.setattr(be, "fno_eligible_short",
                         lambda symbol, td: symbol == "ELIGIBLE")
     monkeypatch.setattr(be, "long_eligible", lambda *a, **k: False)
+    # synthetic bars have no trailing history, so real ADV would be 0 -- this test is
+    # about the F&O counter specifically, not the liquidity gate, so assume liquid
+    monkeypatch.setattr(be, "liquidity_eligible", lambda *a, **k: True)
     # counter bookkeeping happens before _build_trade; stub it out so this test
     # doesn't need a real BayesianState/sizer/execution pipeline
     monkeypatch.setattr(be, "_build_trade", lambda *a, **k: None)

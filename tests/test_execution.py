@@ -29,7 +29,8 @@ def test_entry_is_next_bar_open_not_signal_close():
     sig = Signal("X", +1, entry=100.5, target=106, stop=98, rr=2.5, signal_time="09:15")
     r = simulate_execution(sig, bars, shares=1)
     assert r.entry_time == "09:20"
-    assert r.entry_fill == pytest.approx(100.6 * (1 + 5 / 10000), abs=1e-3)   # slippage up
+    # slippage is off during training (SLIPPAGE_BPS/IMPACT_K = 0) -- fill is the exact open
+    assert r.entry_fill == pytest.approx(100.6, abs=1e-3)
 
 
 def test_long_target_hit():
@@ -41,7 +42,8 @@ def test_long_target_hit():
     assert r.exit_reason == "TARGET"
     # target is re-anchored to entry_fill + the signal's original distance (6), not the raw 106
     reanchored_target = r.entry_fill + (106 - 100)
-    assert r.exit_price < reanchored_target          # slippage on exit (sell below target)
+    # slippage is off during training -- exit fills exactly at the re-anchored target
+    assert r.exit_price == pytest.approx(reanchored_target, abs=1e-6)
 
 
 def test_long_stop_hit():
@@ -75,21 +77,22 @@ def test_mfe_mae_in_r_units():
                   ("09:30", 100, 103, 99.9, 100)])         # below 104; target 106 never hit
     sig = Signal("X", +1, entry=100, target=106, stop=98, rr=3.0, signal_time="09:15")
     r = simulate_execution(sig, bars, shares=1)
-    entry = r.entry_fill                                   # ~100.05 with slippage
+    entry = r.entry_fill                                   # exactly 100 -- slippage off during training
     stop_dist = 100 - 98                                    # fixed R-distance, preserved through re-anchoring
     assert r.mfe_r == pytest.approx((104 - entry) / stop_dist, abs=0.02)
     assert r.mae_r == pytest.approx((99 - entry) / stop_dist, abs=0.02)
     assert r.mae_r < 0
 
 
-def test_short_target_and_slippage_direction():
+def test_short_entry_and_target():
     bars = _bars([("09:15", 100, 100, 100, 100),
                   ("09:20", 100, 100.2, 99.8, 100),
                   ("09:25", 100, 100.1, 93.5, 94)])        # low 93.5 <= target 94 (short)
     sig = Signal("X", -1, entry=100, target=94, stop=102, rr=3.0, signal_time="09:15")
     r = simulate_execution(sig, bars, shares=1)
     assert r.exit_reason == "TARGET"
-    assert r.entry_fill == pytest.approx(100 * (1 - 5 / 10000), abs=1e-3)   # seller receives less
+    # slippage is off during training -- short entry fills at the exact open, no discount
+    assert r.entry_fill == pytest.approx(100.0, abs=1e-3)
 
 
 def test_settings_hash_stable():
