@@ -11,7 +11,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from config.settings import STOCKS_DIR, MAX_RISK_PER_TRADE, CAPITAL
+from config.settings import STOCKS_DIR, DAILY_RISK_CAP_RS
 from weights.bayesian import BayesianState
 import backtester.bayesian_engine as be
 
@@ -53,10 +53,11 @@ def test_pipeline_produces_trades(slice_run):
 
 
 def test_risk_cap_never_exceeded(slice_run):
+    """Each trade risks at most its direction's flat daily budget (burn-in trades
+    risk far less; see DAILY_RISK_CAP_RS in bayesian_sizer)."""
     recs, _ = slice_run
     for r in recs:
-        assert r["risk_pct"] <= MAX_RISK_PER_TRADE * 100 + 1e-9
-        assert r["actual_risk"] <= MAX_RISK_PER_TRADE * CAPITAL + 1e-6
+        assert r["actual_risk"] <= DAILY_RISK_CAP_RS + 1e-6
 
 
 def test_excursion_and_integrity_fields_present(slice_run):

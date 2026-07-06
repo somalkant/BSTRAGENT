@@ -26,7 +26,7 @@ from config.settings import (
     EV_GATE_LOW, EV_GATE_HIGH, DRIVER_MU_LOW, DRIVER_MU_HIGH,
     EFF_CLUSTER_MIN, MAX_CONTRADICTING, VOTE_C_FLOOR, VOTE_C_SCALE,
     CONTEXT_META_CLUSTERS, EVENT_MIN_EV, EVENT_MIN_CLUSTERS,
-    BAYES_BURN_IN_NEFF, CONFIRM_WINDOW_MIN,
+    BAYES_BURN_IN_NEFF, CONFIRM_WINDOW_MIN, STATIC_CONTEXT_STRATEGIES,
 )
 
 
@@ -122,10 +122,17 @@ def count_clusters(signals: dict, driver_direction: int, bayes: BayesianState,
     signals: {strategy_name: Signal}. Returns confirmed/contradicting cluster sets,
     per-confirming-cluster confidence c_i, and eff_binary / eff_weighted.
 
-    Confirmation is CONTEMPORANEOUS: when driver_time is given, price-cluster signals
-    (A/B/C/D/G) count only if they fired within CONFIRM_WINDOW_MIN of the driver — a
-    long at 09:30 does not contradict a short at 14:00. Context/meta clusters (E/F)
-    are day-level and always count. Without driver_time, no time filter (unit tests).
+    Confirmation is CAUSAL, not just contemporaneous: when driver_time is given,
+    price-cluster signals (A/B/C/D/G) count only if they fired AT OR BEFORE the
+    driver, within CONFIRM_WINDOW_MIN — a signal that fires after the driver's own
+    entry can't have been known about at decision time, so it can't validate a trade
+    that already happened. Cluster F and the STATIC_CONTEXT_STRATEGIES subset of
+    cluster E (CPR/CAMARILLA/VPOC — fixed prior-day pivot levels or volume profile,
+    no intraday decay) are day-level facts and always count. The REST of cluster E
+    (ADX-FILTER, REL-STR, FIB-RETRACEMENT) computes an evolving intraday read and
+    is subject to the same causal window as A-D/G — otherwise a vote computed hours
+    after the driver's decision could "confirm" it with information that didn't
+    exist yet at decision time. Without driver_time, no time filter (unit tests).
     """
     dmin = _mins(driver_time) if driver_time else None
     confirmed: set = set()
@@ -140,10 +147,14 @@ def count_clusters(signals: dict, driver_direction: int, bayes: BayesianState,
         cl = _S2C.get(name)
         if cl is None:
             continue
-        # contemporaneity filter for price clusters (E/F are all-day context)
-        if dmin is not None and cl not in CONTEXT_META_CLUSTERS:
+        # causality filter: a signal firing AFTER the driver can't confirm/contradict
+        # a decision already made. Bypassed only for cluster F and the fixed
+        # prior-day facts in STATIC_CONTEXT_STRATEGIES — everything else, including
+        # the rest of cluster E, must satisfy the same at-or-before-driver window.
+        always_counts = cl == "F" or name in STATIC_CONTEXT_STRATEGIES
+        if dmin is not None and not always_counts:
             smin = _mins(getattr(sig, "signal_time", None))
-            if smin is not None and abs(smin - dmin) > CONFIRM_WINDOW_MIN:
+            if smin is not None and (smin > dmin or dmin - smin > CONFIRM_WINDOW_MIN):
                 continue
         if sig.direction == driver_direction:
             confirmed.add(cl)

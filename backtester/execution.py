@@ -49,8 +49,11 @@ class ExecResult:
 
 
 def _slippage_frac(shares: int, bar_volume: float) -> float:
+    """Base spread cost + a square-root market-impact term (see SLIPPAGE_IMPACT_K).
+    Square-root, not linear: 10x the participation rate costs ~sqrt(10)=3.2x the
+    impact, not 10x -- matches how real market impact scales, not a straight ratio."""
     part = (shares / bar_volume) if (shares and bar_volume and bar_volume > 0) else 0.0
-    return _SLIP_BASE + SLIPPAGE_IMPACT_K * part
+    return _SLIP_BASE + SLIPPAGE_IMPACT_K * (part ** 0.5)
 
 
 def _parse_time(s: str, default=(9, 15)) -> dtime:

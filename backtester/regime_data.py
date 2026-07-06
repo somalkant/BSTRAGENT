@@ -4,7 +4,7 @@ Per-day regime inputs (plan_phase2.md §1) — VIX + Nifty daily ADX/return, loo
 Builds, for each trading date t, the scalars the RegimeClassifier needs:
   vix        : India VIX close on t-1 (known at t's open — lookahead-free)
   adx        : ADX(14) of daily Nifty through t-1
-  nifty_ret  : Nifty day-return on t (for R4 crash; used for the trade's regime tag)
+  nifty_ret  : Nifty day-return on t-1 (known at t's open — lookahead-free; for R4 crash)
   vix_bands  : trailing-252d P75/P80/P85 of VIX closes from data <= t-1
 """
 from __future__ import annotations
@@ -62,7 +62,7 @@ def build_regime_inputs(year: int) -> dict:
             trailing = vix_daily[vix_daily.index < d]
             bands = vix_thresholds(trailing.tolist())
         out[d] = {
-            "vix": vix_close, "adx": adx, "nifty_ret": float(nd.loc[d, "ret"]),
+            "vix": vix_close, "adx": adx, "nifty_ret": float(nd.loc[prev, "ret"]),
             "vix_bands": bands,
         }
     return out

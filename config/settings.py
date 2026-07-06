@@ -241,11 +241,30 @@ CONFIRM_WINDOW_MIN  = 30     # confirmation is CONTEMPORANEOUS: only price-clust
 VOTE_C_FLOOR        = 0.3    # confidence-weight floor per confirming cluster
 VOTE_C_SCALE        = 0.15   # c_i = clip((P_best-0.50)/SCALE, FLOOR, 1.0)
 CONTEXT_META_CLUSTERS = ("E", "F")  # clusters whose vote c_i is fixed at 1.0
+# Strategies whose underlying value is a fixed fact set at/before market open
+# (prior-day pivot levels or prior-day volume profile) and does not decay
+# during the day -- these alone bypass the causal confirmation window, even
+# though they sit in cluster E. The REST of cluster E (ADX-FILTER, REL-STR,
+# FIB-RETRACEMENT) computes an evolving intraday read and must satisfy the
+# same at-or-before-driver-time window as clusters A-D/G, or a vote computed
+# hours after the driver's decision could "confirm" it with information that
+# did not exist yet at decision time.
+STATIC_CONTEXT_STRATEGIES = ("CPR", "CAMARILLA", "VPOC")
 
-# ── 2i. Position sizing — capped fractional Kelly ────────────────────────────
-KELLY_FRACTION      = 0.10       # never above 0.15
-MAX_RISK_PER_TRADE  = 0.005      # 0.5% of capital (fraction)
-MAX_DAILY_RISK      = 0.008      # 0.8% of capital summed across the day
+# ── 2i. Position sizing — full-confirm flat risk budget per direction ────────
+# Each direction (LONG/SHORT) is its own capital allocation with its own flat daily
+# risk budget. This system takes at most one long + one short trade per day, so
+# "daily risk budget" and "per-trade risk" are the same number: once a signal has
+# passed cluster confirmation, driver confidence, EV and execution-quality gates,
+# it is sized to the FULL budget for its direction, not shrunk further by a
+# confidence-scaled (Kelly) fraction of it -- see backtester/bayesian_sizer.py.
+LONG_CAPITAL        = 5_00_000   # Rs 5L allocated to LONG (target 10L once scaled to 20L total)
+SHORT_CAPITAL       = 5_00_000   # Rs 5L allocated to SHORT (target 10L once scaled to 20L total)
+DAILY_RISK_CAP_RS   = 20_000     # flat rupee risk budget per direction per day == per trade
+MAX_RISK_PER_TRADE  = 0.005      # 0.5% of capital -- burn-in (unproven driver) token-size cap only
+MAX_DAILY_RISK      = 0.008      # 0.8% of capital -- live daily-loss-halt circuit breaker only
+                                 #   (reports/loss_halt.py); NOT used by the backtester's own
+                                 #   sizing, which now uses DAILY_RISK_CAP_RS per direction
 MIS_LEVERAGE        = 5.0        # intraday buying power = cash x leverage
 MAX_STOCK_NOTIONAL  = 1.0        # 100% of cash per position (= 20% of 5x BP)
 SEBI_MARGIN_FLOOR   = 0.20       # peak-margin floor: margin_rate = max(VaR+ELM, 20%)
@@ -258,7 +277,17 @@ DAILY_HALT_MULT   = 1.2          # daily halt = 1.2x MAX_DAILY_RISK by construct
 # ── B2. Execution realism (baseline; full simulator in Phase 3 B5b) ──────────
 FILL_MODEL          = "NEXT_BAR_OPEN"   # never signal-candle close (look-ahead)
 SLIPPAGE_BPS        = 5.0        # base slippage each side (bps)
-SLIPPAGE_IMPACT_K   = 1.0        # impact term coefficient x participation rate
+# impact = SLIPPAGE_IMPACT_K * sqrt(participation) -- square-root, not linear. Real
+# market-impact models (Almgren-Chriss and standard practitioner rules) consistently
+# use a square-root relationship between participation rate and price impact, not a
+# 1:1 linear one -- being 10x more of a bar's volume costs ~sqrt(10)=3.2x more impact,
+# not 10x more. The previous K=1.0 LINEAR formula overstated impact by roughly 10-30x
+# at the 1-10% participation rates actually seen in this backtest (e.g. a trade at 1.7%
+# participation was charged ~1.75% slippage; a calibrated estimate is closer to ~0.13%).
+# K=0.01 targets ~10bps impact at 1% bar-participation, ~32bps at 10% -- in line with
+# commonly-cited intraday impact heuristics, not empirically fitted to NSE tick data
+# (which isn't available to calibrate against here).
+SLIPPAGE_IMPACT_K   = 0.01       # impact term coefficient x sqrt(participation rate)
 
 # ── B2. Time filters ─────────────────────────────────────────────────────────
 LAST_ENTRY_TIME     = time(14, 30)   # no NEW entries at/after 14:30
@@ -267,6 +296,11 @@ FIRST_CANDLE_TIME   = "09:15"
 FIRST_CANDLE_EXEMPT = {
     "GAP-CONT", "GAP-FADE", "FIRST-CANDLE",
     "PDH-PDL", "PWH-PWL", "CPR", "CAMARILLA",
+    # Cluster-F meta strategies always stamp signal_time="09:15" (they vote on
+    # day-level facts, not the opening print itself) — the "09:15 = noisy
+    # auction print" rationale this filter exists for doesn't apply to them.
+    # Without this they are unconditionally dropped every single day.
+    "PCR", "DAY-SEASONALITY", "PRE-EXPIRY", "BLOCK-DEAL",
 }
 
 # ── B2. Macro event calendar filter ──────────────────────────────────────────
