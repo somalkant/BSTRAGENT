@@ -235,6 +235,14 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
         if not data_integrity_ok(today_med, _trailing_median(history), symbol, trade_date):
             continue
 
+        # liquidity gate BEFORE the expensive 53-strategy loop: a stock that can't clear
+        # MIN_ADV_RS can never contribute a candidate regardless of direction, so there's
+        # no reason to run every strategy against it just to throw the result away. This
+        # check only needs turnover (already computed above), not any strategy output.
+        adv_rs = turnover.get(symbol, 0.0) * 1e7
+        if not liquidity_eligible(adv_rs):
+            continue
+
         prev = _eng._get_prev_day_ohlc(history, trade_date)
         signals = {}
         for strat in ALL_STRATEGIES:
@@ -252,21 +260,17 @@ def _process_day(trade_date: date, all_data, nifty_data, bayes: BayesianState,
         signals = {n: s for n, s in signals.items()
                    if not (s and s.direction != 0 and s.signal_time and after_last_entry(s.signal_time))}
 
-        adv_rs = turnover.get(symbol, 0.0) * 1e7
-        liquid = liquidity_eligible(adv_rs)
-
         long_d = _first_chronological_pass(symbol, signals, decision_bayes, +1, ctx, prev, today, get_breadth)
-        if long_d and liquid and long_eligible(symbol, trade_date):
+        if long_d and long_eligible(symbol, trade_date):
             long_cands.append(long_d)
         short_d = _first_chronological_pass(symbol, signals, decision_bayes, -1, ctx, prev, today, get_breadth)
         if short_d:
-            # SHORT_UNIVERSE_COUNTER measures F&O-eligibility impact specifically --
-            # scoped to any qualifying short signal, independent of the liquidity gate
+            # SHORT_UNIVERSE_COUNTER measures F&O-eligibility impact specifically, among
+            # stocks that already clear the liquidity floor (an illiquid stock's short was
+            # never tradeable regardless of F&O status, so it shouldn't inflate this metric)
             SHORT_UNIVERSE_COUNTER["gated_shorts"] += 1
-            if liquid and fno_eligible_short(symbol, trade_date):
+            if fno_eligible_short(symbol, trade_date):
                 short_cands.append(short_d)
-            elif not liquid:
-                pass   # illiquid -- excluded, but not counted against the F&O metric
             else:
                 SHORT_UNIVERSE_COUNTER["outside_fno"] += 1
                 log.debug(f"[SHORT_OUTSIDE_FNO {symbol} {short_d.driver.strategy}]")
